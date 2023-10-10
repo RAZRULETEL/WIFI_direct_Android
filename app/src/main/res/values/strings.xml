@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">WIFI Direct</string>
+    <integer name="port">50001</integer>
+</resources>
