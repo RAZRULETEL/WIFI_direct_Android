@@ -8,8 +8,8 @@ import android.net.NetworkInfo
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Parcelable
-import android.util.Log
 import android.widget.TextView
+import com.mastik.wifidirect.tasks.SocketConnectTask
 import com.mastik.wifidirect.tasks.SocketServerStartTask
 import com.mastik.wifidirect.tasks.TaskExecutors
 import com.mastik.wifidirect.util.Utils
@@ -69,17 +69,20 @@ class WiFiDirectBroadcastReceiver(
                         Timber.tag(TAG).d("onConnectionInfoAvailable: $info")
                         if (info.groupFormed)
                             if (!info.isGroupOwner) {
-                                //Send request to owner
+                                if (info.groupOwnerAddress.hostAddress != null)
+                                    TaskExecutors.getFixedPool().execute(
+                                        SocketConnectTask(
+                                            info.groupOwnerAddress.hostAddress!!,
+                                            R.integer.port,
+                                        ) {}
+                                    )
+                                else
+                                    Timber.tag(TAG).e("Group owner address is null")
                             } else {
                                 TaskExecutors.getFixedPool().execute(
                                     SocketServerStartTask(
                                         R.integer.port,
-                                        activity.findViewById(R.id.message_text),
-                                        { message ->
-                                            activity.findViewById<TextView>(R.id.socket_status).text = message
-                                        },
-                                        activity.findViewById(R.id.message_send)
-                                    )
+                                    ) {}
                                 )
                             }
                     })
