@@ -1,25 +1,17 @@
 package com.mastik.wifidirect
 
-import android.Manifest
-import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.NetworkInfo
-import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
-import android.net.wifi.p2p.WifiP2pDeviceList
-import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
-import android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener
-import android.net.wifi.p2p.WifiP2pManager.PeerListListener
 import android.os.Parcelable
 import android.util.Log
 import android.widget.TextView
-import androidx.activity.ComponentActivity
-import androidx.core.app.ActivityCompat
-import com.mastik.wifidirect.R
+import com.mastik.wifidirect.tasks.SocketServerStartTask
+import com.mastik.wifidirect.tasks.TaskExecutors
+import timber.log.Timber
 
 /**
  * A BroadcastReceiver that notifies of important wifi p2p events.
@@ -41,26 +33,24 @@ class WiFiDirectBroadcastReceiver(
             val state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1)
 
             if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
-                Log.d(TAG, "Wifi Direct mode is enabled")
+                Timber.tag(TAG).d("Wifi Direct mode is enabled")
             } else {
-                Log.d(TAG, "Wifi Direct mode is not enabled")
+                Timber.tag(TAG).d("Wifi Direct mode is not enabled")
             }
 
-            Log.d(TAG, "P2P state changed - $state")
+            Timber.tag(TAG).d("P2P state changed - $state")
         } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION == action) {
             manager?.requestPeers(
                 channel
             ) { deviceList ->
-                //Log.d(TAG, "onPeersAvailable")
-                //Log.d(TAG, deviceList.toString())
                 activity.findViewById<TextView>(R.id.textView).text = deviceList.toString()
-                for(device in deviceList.deviceList){
-                    if(device.deviceName.equals("RAZRULETEL-PC")){
+                for (device in deviceList.deviceList) {
+                    if (device.deviceName.equals("RAZRULETEL-PC")) {
                         activity.setDevice(device)
                     }
                 }
             }
-            Log.d(TAG, "P2P peers changed")
+            Timber.tag(TAG).d("P2P peers changed")
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION == action) {
             if (manager == null) {
                 return
@@ -72,25 +62,39 @@ class WiFiDirectBroadcastReceiver(
                 // info to find group owner IP
                 manager.requestConnectionInfo(channel,
                     WifiP2pManager.ConnectionInfoListener { info ->
-                        Log.d(TAG, "onConnectionInfoAvailable: $info")
-                        if(info.groupFormed)
-                        if(!info.isGroupOwner){
-                            //Send request to owner
-                        }else{
-                            //Start server
-                        }
+                        Timber.tag(TAG).d("onConnectionInfoAvailable: $info")
+                        if (info.groupFormed)
+                            if (!info.isGroupOwner) {
+                                //Send request to owner
+                            } else {
+                                TaskExecutors.getFixedPool().execute(
+                                    SocketServerStartTask(
+                                        R.integer.port,
+                                        activity.findViewById(R.id.message_text),
+                                        { message ->
+                                            activity.findViewById<TextView>(R.id.socket_status).text = message
+                                        },
+                                        activity.findViewById(R.id.message_send)
+                                    )
+                                )
+                            }
                     })
             } else {
                 // It's a disconnect
             }
         } else if (WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION == action) {
-            Log.d(TAG, "THIS_DEVICE_CHANGED ${intent.getParcelableExtra<Parcelable>(
-                WifiP2pManager.EXTRA_WIFI_P2P_DEVICE
-            ) as WifiP2pDevice?}")
+            Timber.tag(TAG)
+                .d(
+                    "THIS_DEVICE_CHANGED ${
+                        intent.getParcelableExtra<Parcelable>(
+                            WifiP2pManager.EXTRA_WIFI_P2P_DEVICE
+                        ) as WifiP2pDevice?
+                    }"
+                )
         }
     }
 
-    companion object{
+    companion object {
         const val TAG = "BroadcastReceiver"
     }
 }
