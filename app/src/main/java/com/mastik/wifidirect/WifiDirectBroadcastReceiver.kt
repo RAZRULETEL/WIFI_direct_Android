@@ -1,5 +1,6 @@
 package com.mastik.wifidirect
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -11,6 +12,7 @@ import android.util.Log
 import android.widget.TextView
 import com.mastik.wifidirect.tasks.SocketServerStartTask
 import com.mastik.wifidirect.tasks.TaskExecutors
+import com.mastik.wifidirect.util.Utils
 import timber.log.Timber
 
 /**
@@ -27,6 +29,7 @@ class WiFiDirectBroadcastReceiver(
      * @param activity activity associated with the receiver
      */
 
+    @SuppressLint("MissingPermission")
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
         if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION == action) {
@@ -40,6 +43,7 @@ class WiFiDirectBroadcastReceiver(
 
             Timber.tag(TAG).d("P2P state changed - $state")
         } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION == action) {
+            Utils.checkWifiDirectPermissions(activity)
             manager?.requestPeers(
                 channel
             ) { deviceList ->

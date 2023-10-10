@@ -18,10 +18,13 @@ import android.widget.TextView
 import android.widget.Toast
 import android.widget.ToggleButton
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
+import com.mastik.wifidirect.util.Utils
 import timber.log.Timber
 import java.util.Timer
 import java.util.TimerTask
+import java.util.concurrent.SynchronousQueue
 
 
 class MainActivity : ComponentActivity() {
@@ -35,21 +38,27 @@ class MainActivity : ComponentActivity() {
     var channel: WifiP2pManager.Channel? = null
     var receiver: BroadcastReceiver? = null
 
+    private val permissionRequestResults: SynchronousQueue<Boolean> = SynchronousQueue(true)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_layout)
 
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION);
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
-        intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION);
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            permissionRequestResults.add(granted)
+        }
+
+        intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
+        intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
+        intentFilter.addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
+        intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
 
         channel = manager?.initialize(applicationContext, mainLooper, null)
         channel?.also { channel ->
             receiver = WiFiDirectBroadcastReceiver(manager, channel, this)
         }
 
-        registerReceiver(receiver, intentFilter);
+        registerReceiver(receiver, intentFilter)
 
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -107,12 +116,12 @@ class MainActivity : ComponentActivity() {
                         applicationContext,
                         "Successfully disconnected",
                         Toast.LENGTH_LONG
-                    ).show();
+                    ).show()
                 }
 
                 override fun onFailure(p0: Int) {
                     Toast.makeText(applicationContext, "Disconnection fail $p0", Toast.LENGTH_LONG)
-                        .show();
+                        .show()
                 }
 
             })
@@ -135,9 +144,11 @@ class MainActivity : ComponentActivity() {
             })
         }
 
+
         Timer().scheduleAtFixedRate(object : TimerTask() {
             @SuppressLint("MissingPermission")
             override fun run() {
+                Utils.checkWifiDirectPermissions(this@MainActivity)
                 manager?.discoverPeers(channel, object : ActionListener {
                     override fun onSuccess() {
                         findViewById<TextView>(R.id.scan_status).setBackgroundColor(Color.GREEN)
@@ -157,6 +168,10 @@ class MainActivity : ComponentActivity() {
 
     fun setDevice(device: WifiP2pDevice) {
         this.device = device
+    }
+
+    fun getPermissionRequestResult(): Boolean {
+        return permissionRequestResults.poll()!!
     }
 
     companion object {
