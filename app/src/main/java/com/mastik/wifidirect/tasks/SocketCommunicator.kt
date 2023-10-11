@@ -9,7 +9,7 @@ import java.net.Socket
 import java.nio.CharBuffer
 import java.nio.charset.Charset
 
-class SocketCommunicator (private val socket: Socket) {
+class SocketCommunicator (private val socket: Socket): Communicator {
     private val outTextStream =
         OutputStreamWriter(socket.getOutputStream(), Charset.forName("UTF-8"))
 
@@ -28,19 +28,25 @@ class SocketCommunicator (private val socket: Socket) {
         }
     }
 
-    fun readLoop(newMessageListener: Consumer<String>) {
+    private var newMessageListener: Consumer<String>? = null
+
+    fun readLoop() {
         val stream = InputStreamReader(socket.getInputStream())
         val buff = CharBuffer.allocate(8192)
 
         while (socket.isConnected) {
             val dataSize = stream.read(buff)
-            newMessageListener.accept(buff.toString())
+            newMessageListener?.accept(buff.toString())
             buff.clear()
         }
     }
 
-    fun getMessageSender(): Consumer<String> {
+    override fun getMessageSender(): Consumer<String> {
         return onMessageSend
+    }
+
+    override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
+        newMessageListener = onNewMessage
     }
 
     companion object{

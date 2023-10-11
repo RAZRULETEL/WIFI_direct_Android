@@ -10,11 +10,10 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
 
-class SocketConnectTask(
+class ConnectTask(
     private val host: String,
     private val defaultPort: Int,
-    private val newMessageListener: Consumer<String>,
-): Runnable {
+): Communicator, Runnable {
 
     private var communicator: SocketCommunicator? = null
 
@@ -49,7 +48,7 @@ class SocketConnectTask(
 
         try {
             communicator = SocketCommunicator(client)
-            communicator!!.readLoop(newMessageListener)
+            communicator!!.readLoop()
 
             if(!client.isConnected) client.close()
         } catch (e: Exception){
@@ -58,8 +57,12 @@ class SocketConnectTask(
         communicator = null
     }
 
-    fun getMessageSender(): Consumer<String>?{
+    override fun getMessageSender(): Consumer<String>?{
         return communicator?.getMessageSender()
+    }
+
+    override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
+        communicator?.setOnNewMessageListener(onNewMessage)
     }
 
     companion object{

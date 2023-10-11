@@ -8,9 +8,11 @@ import android.net.NetworkInfo
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Parcelable
+import android.widget.ImageButton
 import android.widget.TextView
-import com.mastik.wifidirect.tasks.SocketConnectTask
-import com.mastik.wifidirect.tasks.SocketServerStartTask
+import com.mastik.wifidirect.tasks.Communicator
+import com.mastik.wifidirect.tasks.ConnectTask
+import com.mastik.wifidirect.tasks.ServerStartTask
 import com.mastik.wifidirect.tasks.TaskExecutors
 import com.mastik.wifidirect.util.Utils
 import timber.log.Timber
@@ -67,24 +69,34 @@ class WiFiDirectBroadcastReceiver(
                 manager.requestConnectionInfo(channel,
                     WifiP2pManager.ConnectionInfoListener { info ->
                         Timber.tag(TAG).d("onConnectionInfoAvailable: $info")
-                        if (info.groupFormed)
+                        if (info.groupFormed) {
+                            var task: Communicator? = null
                             if (!info.isGroupOwner) {
                                 if (info.groupOwnerAddress.hostAddress != null)
-                                    TaskExecutors.getFixedPool().execute(
-                                        SocketConnectTask(
-                                            info.groupOwnerAddress.hostAddress!!,
-                                            R.integer.port,
-                                        ) {}
+                                    task = ConnectTask(
+                                        info.groupOwnerAddress.hostAddress!!,
+                                        R.integer.port,
                                     )
                                 else
                                     Timber.tag(TAG).e("Group owner address is null")
                             } else {
-                                TaskExecutors.getFixedPool().execute(
-                                    SocketServerStartTask(
-                                        R.integer.port,
-                                    ) {}
+                                task = ServerStartTask(
+                                    R.integer.port,
                                 )
                             }
+                            task?.setOnNewMessageListener() { message ->
+                                activity.findViewById<TextView>(R.id.socket_status).text = message
+                            }
+
+                            TaskExecutors.getFixedPool().execute(task as Runnable)
+
+                            activity.findViewById<ImageButton>(R.id.message_send)
+                                .setOnClickListener {
+                                    task.getMessageSender()?.accept(
+                                        activity.findViewById<TextView>(R.id.message_text).text.toString()
+                                    )
+                                }
+                        }
                     })
             } else {
                 // It's a disconnect

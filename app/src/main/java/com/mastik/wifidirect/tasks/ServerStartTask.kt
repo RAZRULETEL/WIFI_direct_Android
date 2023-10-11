@@ -7,10 +7,9 @@ import timber.log.Timber
 import java.net.BindException
 import java.net.ServerSocket
 
-class SocketServerStartTask(
+class ServerStartTask(
     private val defaultPort: Int,
-    private val newMessageListener: Consumer<String>,
-    ) : Runnable {
+    ) : Communicator, Runnable {
 
     private var communicator: SocketCommunicator? = null
 
@@ -47,15 +46,19 @@ class SocketServerStartTask(
 
             server.close()
 
-            communicator!!.readLoop(newMessageListener)
+            communicator!!.readLoop()
         } catch (e: Exception) {
             e.printStackTrace()
         }
         communicator = null
     }
 
-    fun getMessageSender(): Consumer<String>?{
+    override fun getMessageSender(): Consumer<String>?{
         return communicator?.getMessageSender()
+    }
+
+    override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
+        communicator?.setOnNewMessageListener(onNewMessage)
     }
 
     companion object {
