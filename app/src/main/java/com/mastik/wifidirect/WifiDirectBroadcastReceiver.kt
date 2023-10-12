@@ -85,22 +85,27 @@ class WiFiDirectBroadcastReceiver(
                                     50_001,
                                 )
                             }
-                            task?.setOnNewMessageListener() { message ->
-                                activity.findViewById<TextView>(R.id.socket_status).post {
-                                    activity.findViewById<TextView>(R.id.socket_status).text = message
-                                }
-                            }
 
-                            TaskExecutors.getFixedPool().execute(task as Runnable)
 
-                            activity.findViewById<ImageButton>(R.id.message_send)
-                                .setOnClickListener {
-                                    TaskExecutors.getCachedPool().execute {
-                                        task.getMessageSender()?.accept(
-                                            activity.findViewById<TextView>(R.id.message_text).text.toString()
-                                        )
+
+                            task?.let {
+                                it.setOnNewMessageListener() { message ->
+                                    activity.findViewById<TextView>(R.id.socket_status).post {
+                                        activity.findViewById<TextView>(R.id.socket_status).text = message
                                     }
                                 }
+
+                                activity.findViewById<ImageButton>(R.id.message_send)
+                                    .setOnClickListener {_ ->
+                                        TaskExecutors.getCachedPool().execute {
+                                            it.getMessageSender().accept(
+                                                activity.findViewById<TextView>(R.id.message_text).text.toString()
+                                            )
+                                        }
+                                    }
+
+                                TaskExecutors.getFixedPool().execute(it as Runnable)
+                            }
                         }
                     })
             } else {

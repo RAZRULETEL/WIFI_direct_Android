@@ -11,7 +11,7 @@ class ServerStartTask(
     private val defaultPort: Int,
     ) : Communicator, Runnable {
 
-    private var communicator: SocketCommunicator? = null
+    private var communicator: SocketCommunicator = SocketCommunicator()
 
     override fun run() {
         if(Looper.myLooper() == Looper.getMainLooper())
@@ -42,23 +42,22 @@ class ServerStartTask(
 
 
         try {
-            communicator = SocketCommunicator(server.accept())
+            val client = server.accept()
 
             server.close()
 
-            communicator!!.readLoop()
+            communicator.readLoop(client)
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        communicator = null
     }
 
-    override fun getMessageSender(): Consumer<String>?{
-        return communicator?.getMessageSender()
+    override fun getMessageSender(): Consumer<String>{
+        return communicator.getMessageSender()
     }
 
     override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
-        communicator?.setOnNewMessageListener(onNewMessage)
+        communicator.setOnNewMessageListener(onNewMessage)
     }
 
     companion object {

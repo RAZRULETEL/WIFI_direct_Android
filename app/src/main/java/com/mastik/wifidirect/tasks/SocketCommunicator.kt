@@ -9,29 +9,31 @@ import java.net.Socket
 import java.nio.CharBuffer
 import java.nio.charset.Charset
 
-class SocketCommunicator (private val socket: Socket): Communicator {
-    private val outTextStream =
-        OutputStreamWriter(socket.getOutputStream(), Charset.forName("UTF-8"))
+class SocketCommunicator (): Communicator {
+    private var outTextStream: OutputStreamWriter? = null
 
     private val onMessageSend: Consumer<String> = Consumer<String>{ message ->
-        val outTextStream = this.outTextStream
-        Timber.tag(TAG).d("Send message: %s", message)
+        outTextStream?.let {
+            Timber.tag(TAG).d("Send message: %s", message)
 
-        val len = message.length
-        try {
-            for (i in 0 until 4) outTextStream.write(len shr (i * 8))
+            val len = message.length
+            try {
+                for (i in 0 until 4) it.write(len shr (i * 8))
 
-            outTextStream.write(message)
-            outTextStream.flush()
-        } catch (e: IOException) {
-            Timber.tag(TAG).e(e, "Send message error")
+                it.write(message)
+                it.flush()
+            } catch (e: IOException) {
+                Timber.tag(TAG).e(e, "Send message error")
+            }
         }
     }
 
     private var newMessageListener: Consumer<String>? = null
 
     @Throws(IOException::class)
-    fun readLoop() {
+    fun readLoop(socket: Socket) {
+        outTextStream = OutputStreamWriter(socket.getOutputStream(), Charset.forName("UTF-8"))
+
         val stream = InputStreamReader(socket.getInputStream())
         val buff = CharBuffer.allocate(8192)
 

@@ -15,7 +15,8 @@ class ConnectTask(
     private val connectDelay: Long = 0
 ): Communicator, Runnable {
 
-    private var communicator: SocketCommunicator? = null
+    private var newMessageListener: Consumer<String>? = null
+    private var communicator: SocketCommunicator = SocketCommunicator()
 
     override fun run() {
         if(Looper.myLooper() == Looper.getMainLooper())
@@ -47,22 +48,19 @@ class ConnectTask(
 
 
         try {
-            communicator = SocketCommunicator(client)
-            communicator!!.readLoop()
-
+            communicator.readLoop(client)
             if(!client.isConnected) client.close()
         } catch (e: Exception){
             e.printStackTrace()
         }
-        communicator = null
     }
 
-    override fun getMessageSender(): Consumer<String>?{
-        return communicator?.getMessageSender()
+    override fun getMessageSender(): Consumer<String>{
+        return communicator.getMessageSender()
     }
 
     override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
-        communicator?.setOnNewMessageListener(onNewMessage)
+        communicator.setOnNewMessageListener(onNewMessage)
     }
 
     companion object{
