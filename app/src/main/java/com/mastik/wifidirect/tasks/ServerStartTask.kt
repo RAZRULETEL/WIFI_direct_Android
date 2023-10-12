@@ -62,6 +62,6 @@ class ServerStartTask(
     }
 
     companion object {
-        val TAG: String = Companion::class.java.simpleName
+        val TAG: String = ServerStartTask::class.simpleName!!
     }
 }

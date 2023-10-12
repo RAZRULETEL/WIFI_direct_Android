@@ -15,11 +15,11 @@ class SocketCommunicator (private val socket: Socket): Communicator {
 
     private val onMessageSend: Consumer<String> = Consumer<String>{ message ->
         val outTextStream = this.outTextStream
+        Timber.tag(TAG).d("Send message: %s", message)
 
-        Timber.tag(TAG).d("Sending...")
         val len = message.length
         try {
-            for (i in 0 until 4) outTextStream.write(len shl i * 8)
+            for (i in 0 until 4) outTextStream.write(len shr (i * 8))
 
             outTextStream.write(message)
             outTextStream.flush()
@@ -30,13 +30,16 @@ class SocketCommunicator (private val socket: Socket): Communicator {
 
     private var newMessageListener: Consumer<String>? = null
 
+    @Throws(IOException::class)
     fun readLoop() {
         val stream = InputStreamReader(socket.getInputStream())
         val buff = CharBuffer.allocate(8192)
 
         while (socket.isConnected) {
             val dataSize = stream.read(buff)
-            newMessageListener?.accept(buff.toString())
+            val message = buff.position(0).toString().substring(0, dataSize)
+            Timber.tag(TAG).d("Received %d bytes: %s", dataSize, message)
+            newMessageListener?.accept(message)
             buff.clear()
         }
     }
@@ -50,6 +53,6 @@ class SocketCommunicator (private val socket: Socket): Communicator {
     }
 
     companion object{
-        val TAG: String = Companion::class.java.simpleName
+        val TAG: String = SocketCommunicator::class.simpleName!!
     }
 }

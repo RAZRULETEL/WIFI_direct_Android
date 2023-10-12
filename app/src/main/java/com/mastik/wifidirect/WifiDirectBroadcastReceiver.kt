@@ -45,17 +45,17 @@ class WiFiDirectBroadcastReceiver(
 
             Timber.tag(TAG).d("P2P state changed - $state")
         } else if (WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION == action) {
-            Utils.checkWifiDirectPermissions(activity)
-            manager?.requestPeers(
-                channel
-            ) { deviceList ->
-                activity.findViewById<TextView>(R.id.textView).text = deviceList.toString()
-                for (device in deviceList.deviceList) {
-                    if (device.deviceName.equals("RAZRULETEL-PC")) {
-                        activity.setDevice(device)
+            if (Utils.checkWifiDirectPermissionsSoft(activity))
+                manager?.requestPeers(
+                    channel
+                ) { deviceList ->
+                    activity.findViewById<TextView>(R.id.textView).text = deviceList.toString()
+                    for (device in deviceList.deviceList) {
+                        if (device.deviceName.equals("RAZRULETEL-PC")) {
+                            activity.setDevice(device)
+                        }
                     }
                 }
-            }
             Timber.tag(TAG).d("P2P peers changed")
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION == action) {
             if (manager == null) {
@@ -75,26 +75,31 @@ class WiFiDirectBroadcastReceiver(
                                 if (info.groupOwnerAddress.hostAddress != null)
                                     task = ConnectTask(
                                         info.groupOwnerAddress.hostAddress!!,
-                                        R.integer.port,
+                                        50_001,
+                                        1_000L
                                     )
                                 else
                                     Timber.tag(TAG).e("Group owner address is null")
                             } else {
                                 task = ServerStartTask(
-                                    R.integer.port,
+                                    50_001,
                                 )
                             }
                             task?.setOnNewMessageListener() { message ->
-                                activity.findViewById<TextView>(R.id.socket_status).text = message
+                                activity.findViewById<TextView>(R.id.socket_status).post {
+                                    activity.findViewById<TextView>(R.id.socket_status).text = message
+                                }
                             }
 
                             TaskExecutors.getFixedPool().execute(task as Runnable)
 
                             activity.findViewById<ImageButton>(R.id.message_send)
                                 .setOnClickListener {
-                                    task.getMessageSender()?.accept(
-                                        activity.findViewById<TextView>(R.id.message_text).text.toString()
-                                    )
+                                    TaskExecutors.getCachedPool().execute {
+                                        task.getMessageSender()?.accept(
+                                            activity.findViewById<TextView>(R.id.message_text).text.toString()
+                                        )
+                                    }
                                 }
                         }
                     })

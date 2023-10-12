@@ -1,11 +1,9 @@
 package com.mastik.wifidirect
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
@@ -19,8 +17,6 @@ import android.widget.Toast
 import android.widget.ToggleButton
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
-import com.mastik.wifidirect.util.Utils
 import timber.log.Timber
 import java.util.Timer
 import java.util.TimerTask
@@ -40,11 +36,15 @@ class MainActivity : ComponentActivity() {
 
     private val permissionRequestResults: SynchronousQueue<Boolean> = SynchronousQueue(true)
 
+    @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_layout)
 
+        Timber.plant(Timber.DebugTree())
+
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            Timber.tag(TAG).d("Permission granted: $granted")
             permissionRequestResults.add(granted)
         }
 
@@ -60,27 +60,10 @@ class MainActivity : ComponentActivity() {
 
         registerReceiver(receiver, intentFilter)
 
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.NEARBY_WIFI_DEVICES
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                var perms = arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                )
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                    perms += Manifest.permission.NEARBY_WIFI_DEVICES
-                requestPermissions(
-                    perms, 0
-                )
-            }
-        }
+
 
         findViewById<ToggleButton>(R.id.listen_start).setOnCheckedChangeListener { button, checked ->
+//            Utils.checkWifiDirectPermissions(this)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 if (checked) {
                     manager?.startListening(channel!!, object : ActionListener {
@@ -107,7 +90,7 @@ class MainActivity : ComponentActivity() {
         }
 
         findViewById<Button>(R.id.connect_cancel).setOnClickListener {
-            Timber.tag(TAG).d("Disconnecting...")
+            Timber.tag(TAG).d("Canceling connection...")
             val config = WifiP2pConfig()
             config.deviceAddress = device!!.deviceAddress
             manager?.cancelConnect(channel, object : ActionListener {
@@ -125,6 +108,25 @@ class MainActivity : ComponentActivity() {
                 }
 
             })
+        }
+
+        findViewById<Button>(R.id.disconnect).setOnClickListener {
+            Timber.tag(TAG).d("Disconnecting...")
+            manager?.requestGroupInfo(channel) { group ->
+                if (group != null) {
+                    manager?.removeGroup(channel, object : ActionListener {
+
+                        override fun onSuccess() {
+                            Timber.tag(TAG).d("removeGroup onSuccess");
+                        }
+
+                        override fun onFailure(reason: Int) {
+                            Timber.tag(TAG).d("removeGroup onFailure $reason");
+                        }
+                    })
+                }else
+                    Timber.tag(TAG).d("Group is null")
+            }
         }
 
         findViewById<Button>(R.id.connect).setOnClickListener {
@@ -148,7 +150,7 @@ class MainActivity : ComponentActivity() {
         Timer().scheduleAtFixedRate(object : TimerTask() {
             @SuppressLint("MissingPermission")
             override fun run() {
-                Utils.checkWifiDirectPermissions(this@MainActivity)
+//                Utils.checkWifiDirectPermissions(this@MainActivity)
                 manager?.discoverPeers(channel, object : ActionListener {
                     override fun onSuccess() {
                         findViewById<TextView>(R.id.scan_status).setBackgroundColor(Color.GREEN)
@@ -160,8 +162,19 @@ class MainActivity : ComponentActivity() {
                     }
                 })
             }
-        }, 0, 1000)
+        }, 1000, 1000)
 
+        findViewById<Button>(R.id.socket_connect).setOnClickListener {
+            manager?.clearServiceRequests(channel!!, object : ActionListener {
+                override fun onSuccess() {
+                    Timber.tag("WIFI P2P SCAN").d("Success")
+                }
+
+                override fun onFailure(p0: Int) {
+                    Timber.tag("WIFI P2P SCAN").d("Failure $p0")
+                }
+            })
+        }
     }
 
     private var device: WifiP2pDevice? = null
@@ -171,10 +184,10 @@ class MainActivity : ComponentActivity() {
     }
 
     fun getPermissionRequestResult(): Boolean {
-        return permissionRequestResults.poll()!!
+        return permissionRequestResults.take()!!
     }
 
     companion object {
-        val TAG = Companion::class.java.simpleName
+        val TAG: String = MainActivity::class.simpleName!!
     }
 }
