@@ -75,8 +75,7 @@ class WiFiDirectBroadcastReceiver(
                                 if (info.groupOwnerAddress.hostAddress != null)
                                     task = ConnectTask(
                                         info.groupOwnerAddress.hostAddress!!,
-                                        50_001,
-                                        1_000L
+                                        50_001
                                     )
                                 else
                                     Timber.tag(TAG).e("Group owner address is null")

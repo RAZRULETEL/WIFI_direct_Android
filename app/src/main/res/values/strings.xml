@@ -1,6 +1,3 @@
 <resources>
     <string name="app_name">WIFI Direct</string>
-    <integer name="port">50001</integer>
-    <integer name="connect_timeout">3000</integer>
-    <integer name="fixed_threads_count">6</integer>
 </resources>

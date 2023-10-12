@@ -11,6 +11,12 @@ class ServerStartTask(
     private val defaultPort: Int,
     ) : Communicator, Runnable {
 
+    companion object {
+        val TAG: String = ServerStartTask::class.simpleName!!
+
+        const val MAX_PORT_OFFSET = 10
+    }
+
     private var communicator: SocketCommunicator = SocketCommunicator()
 
     override fun run() {
@@ -23,7 +29,7 @@ class ServerStartTask(
         var portOffset = 0
         try {
             while (server == null) {
-                if (portOffset > 10) {
+                if (portOffset >= MAX_PORT_OFFSET) {
                     Timber.tag(TAG).e("Start socket listener error, port overflow")
                     return
                 }
@@ -58,9 +64,5 @@ class ServerStartTask(
 
     override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
         communicator.setOnNewMessageListener(onNewMessage)
-    }
-
-    companion object {
-        val TAG: String = ServerStartTask::class.simpleName!!
     }
 }

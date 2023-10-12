@@ -12,10 +12,14 @@ import java.net.SocketTimeoutException
 class ConnectTask(
     private val host: String,
     private val defaultPort: Int,
-    private val connectDelay: Long = 0
+    private val connectDelay: Long = 1_000L
 ): Communicator, Runnable {
+    companion object{
+        val TAG: String = ConnectTask::class.simpleName!!
 
-    private var newMessageListener: Consumer<String>? = null
+        private const val CONNECT_TIMEOUT: Int = 3_000
+    }
+
     private var communicator: SocketCommunicator = SocketCommunicator()
 
     override fun run() {
@@ -28,17 +32,17 @@ class ConnectTask(
         var portOffset = 0
 
         while (!client.isConnected) {
-            if(portOffset > 10){
+            if(portOffset >= ServerStartTask.MAX_PORT_OFFSET){
                 Timber.tag(TAG).e("Start socket listener error, port overflow")
                 return
             }
             try {
                 client.connect(
                     InetSocketAddress(host, defaultPort + portOffset++),
-                    3000//R.integer.connect_timeout
+                    CONNECT_TIMEOUT
                 )
-            } catch (e: SocketTimeoutException) { e.printStackTrace()
-            } catch (e: IOException) { e.printStackTrace()
+            } catch (_: SocketTimeoutException) {
+            } catch (_: IOException) {
             } catch (e: IllegalArgumentException) {
                 Timber.tag(TAG).e(e, "Start socket listener error, invalid port or host")
                 return
@@ -61,9 +65,5 @@ class ConnectTask(
 
     override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
         communicator.setOnNewMessageListener(onNewMessage)
-    }
-
-    companion object{
-        val TAG: String = ConnectTask::class.simpleName!!
     }
 }
