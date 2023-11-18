@@ -19,6 +19,7 @@ class TaskExecutors private constructor(){
         private val cachedPool = Executors.newCachedThreadPool() // For short tasks, or network requests
 
         fun getFixedPool(): ExecutorService {
+            println("Fixed pool load: ${fixedPool.activeCount}/${fixedPool.poolSize}")
             return fixedPool
         }
 

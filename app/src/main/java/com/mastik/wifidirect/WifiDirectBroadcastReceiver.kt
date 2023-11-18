@@ -90,14 +90,14 @@ class WiFiDirectBroadcastReceiver(
 
 
 
-                            task?.let {
-                                it.setOnNewMessageListener() { message ->
+                            task?.let {communicator ->
+                                communicator.setOnNewMessageListener() { message ->
                                     activity.findViewById<TextView>(R.id.socket_status).post {
                                         activity.findViewById<TextView>(R.id.socket_status).text = message
                                     }
                                 }
 
-                                it.setOnNewFileListener(){
+                                communicator.setOnNewFileListener(){
                                     val parcel = activity.getNewFileDescriptor()
                                     return@setOnNewFileListener parcel
                                 }
@@ -105,28 +105,34 @@ class WiFiDirectBroadcastReceiver(
                                 activity.findViewById<ImageButton>(R.id.message_send)
                                     .setOnClickListener {_ ->
                                         TaskExecutors.getCachedPool().execute {
-                                            it.getMessageSender().accept(
+                                            communicator.getMessageSender().accept(
                                                 activity.findViewById<TextView>(R.id.message_text).text.toString()
                                             )
                                         }
                                     }
 
                                 activity.setFileChooserLauncher(getContent.register("open file", ActivityResultContracts.GetContent()) { uri: Uri? ->
-                                    TaskExecutors.getCachedPool().execute {
-                                        val parcelFileDescriptor: ParcelFileDescriptor =
-                                            activity.contentResolver.openFileDescriptor(uri!!, "r")!!
+                                    uri?.let {
+                                        TaskExecutors.getCachedPool().execute {
+                                            val parcelFileDescriptor: ParcelFileDescriptor =
+                                                activity.contentResolver.openFileDescriptor(
+                                                    uri,
+                                                    "r"
+                                                )!!
 
-                                        val fileDescriptor: FileDescriptor = parcelFileDescriptor.fileDescriptor
+                                            val fileDescriptor: FileDescriptor =
+                                                parcelFileDescriptor.fileDescriptor
 
-                                        it.getFileSender().accept(fileDescriptor)
+                                            communicator.getFileSender().accept(fileDescriptor)
 
-                                        parcelFileDescriptor.close()
+                                            parcelFileDescriptor.close()
+                                        }
                                     }
                                 })
 
 
 
-                                TaskExecutors.getFixedPool().execute(it as Runnable)
+                                TaskExecutors.getFixedPool().execute(communicator as Runnable)
                             }
                         }
                     })
