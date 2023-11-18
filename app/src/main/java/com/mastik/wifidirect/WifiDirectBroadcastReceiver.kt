@@ -5,17 +5,22 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.net.NetworkInfo
+import android.net.Uri
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
+import android.os.ParcelFileDescriptor
 import android.os.Parcelable
 import android.widget.ImageButton
 import android.widget.TextView
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.contract.ActivityResultContracts
 import com.mastik.wifidirect.tasks.Communicator
 import com.mastik.wifidirect.tasks.ConnectTask
 import com.mastik.wifidirect.tasks.ServerStartTask
 import com.mastik.wifidirect.tasks.TaskExecutors
 import com.mastik.wifidirect.util.Utils
 import timber.log.Timber
+import java.io.FileDescriptor
 
 /**
  * A BroadcastReceiver that notifies of important wifi p2p events.
@@ -30,6 +35,8 @@ class WiFiDirectBroadcastReceiver(
      * @param channel Wifi p2p channel
      * @param activity activity associated with the receiver
      */
+
+    val getContent : ActivityResultRegistry = activity.activityResultRegistry
 
     @SuppressLint("MissingPermission")
     override fun onReceive(context: Context, intent: Intent) {
@@ -49,12 +56,8 @@ class WiFiDirectBroadcastReceiver(
                 manager?.requestPeers(
                     channel
                 ) { deviceList ->
-                    activity.findViewById<TextView>(R.id.textView).text = deviceList.toString()
-                    for (device in deviceList.deviceList) {
-                        if (device.deviceName.equals("RAZRULETEL-PC")) {
-                            activity.setDevice(device)
-                        }
-                    }
+                    Timber.tag(TAG).d(deviceList.toString())
+                    activity.setWifiDirectPeers(deviceList)
                 }
             Timber.tag(TAG).d("P2P peers changed")
         } else if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION == action) {
@@ -94,6 +97,11 @@ class WiFiDirectBroadcastReceiver(
                                     }
                                 }
 
+                                it.setOnNewFileListener(){
+                                    val parcel = activity.getNewFileDescriptor()
+                                    return@setOnNewFileListener parcel
+                                }
+
                                 activity.findViewById<ImageButton>(R.id.message_send)
                                     .setOnClickListener {_ ->
                                         TaskExecutors.getCachedPool().execute {
@@ -102,6 +110,21 @@ class WiFiDirectBroadcastReceiver(
                                             )
                                         }
                                     }
+
+                                activity.setFileChooserLauncher(getContent.register("open file", ActivityResultContracts.GetContent()) { uri: Uri? ->
+                                    TaskExecutors.getCachedPool().execute {
+                                        val parcelFileDescriptor: ParcelFileDescriptor =
+                                            activity.contentResolver.openFileDescriptor(uri!!, "r")!!
+
+                                        val fileDescriptor: FileDescriptor = parcelFileDescriptor.fileDescriptor
+
+                                        it.getFileSender().accept(fileDescriptor)
+
+                                        parcelFileDescriptor.close()
+                                    }
+                                })
+
+
 
                                 TaskExecutors.getFixedPool().execute(it as Runnable)
                             }

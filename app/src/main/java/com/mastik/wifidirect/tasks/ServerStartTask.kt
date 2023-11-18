@@ -2,8 +2,11 @@ package com.mastik.wifidirect.tasks
 
 import android.os.Looper
 import android.os.NetworkOnMainThreadException
+import android.os.ParcelFileDescriptor
 import androidx.core.util.Consumer
+import androidx.core.util.Supplier
 import timber.log.Timber
+import java.io.FileDescriptor
 import java.net.BindException
 import java.net.ServerSocket
 
@@ -35,7 +38,7 @@ class ServerStartTask(
                 }
                 try {
                     server = ServerSocket(defaultPort + portOffset++)
-                } catch (_: BindException) {}
+                } catch (e: BindException) {e.printStackTrace()}
             }
         } catch (e: IllegalArgumentException) {
             Timber.tag(TAG).e(e, "Start socket listener error, invalid port: %d", defaultPort)
@@ -64,5 +67,12 @@ class ServerStartTask(
 
     override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
         communicator.setOnNewMessageListener(onNewMessage)
+    }
+    override fun getFileSender(): Consumer<FileDescriptor> {
+        return communicator.getFileSender()
+    }
+
+    override fun setOnNewFileListener(onNewFile: Supplier<ParcelFileDescriptor>) {
+        communicator.setOnNewFileListener(onNewFile)
     }
 }

@@ -5,22 +5,32 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
 import android.graphics.Color
+import android.net.Uri
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
+import android.net.wifi.p2p.WifiP2pDeviceList
 import android.net.wifi.p2p.WifiP2pManager
 import android.net.wifi.p2p.WifiP2pManager.ActionListener
-import android.os.Build
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
+import android.view.View.OnClickListener
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import android.widget.ToggleButton
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
+import androidx.core.view.children
+import androidx.core.view.forEach
+import com.mastik.wifidirect.util.Utils
 import timber.log.Timber
 import java.util.Timer
 import java.util.TimerTask
+import java.util.concurrent.Exchanger
 import java.util.concurrent.SynchronousQueue
+import java.util.concurrent.TimeUnit
 
 
 class MainActivity : ComponentActivity() {
@@ -60,56 +70,6 @@ class MainActivity : ComponentActivity() {
 
         registerReceiver(receiver, intentFilter)
 
-
-
-        findViewById<ToggleButton>(R.id.listen_start).setOnCheckedChangeListener { button, checked ->
-//            Utils.checkWifiDirectPermissions(this)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (checked) {
-                    manager?.startListening(channel!!, object : ActionListener {
-                        override fun onSuccess() {
-                            findViewById<TextView>(R.id.listen_status).setBackgroundColor(Color.GREEN)
-                        }
-
-                        override fun onFailure(p0: Int) {
-                            findViewById<TextView>(R.id.listen_status).setBackgroundColor(Color.RED)
-                        }
-                    })
-                } else {
-                    manager?.stopListening(channel!!, object : ActionListener {
-                        override fun onSuccess() {
-                            findViewById<TextView>(R.id.listen_status).setBackgroundColor(Color.RED)
-                        }
-
-                        override fun onFailure(p0: Int) {
-
-                        }
-                    })
-                }
-            }
-        }
-
-        findViewById<Button>(R.id.connect_cancel).setOnClickListener {
-            Timber.tag(TAG).d("Canceling connection...")
-            val config = WifiP2pConfig()
-            config.deviceAddress = device!!.deviceAddress
-            manager?.cancelConnect(channel, object : ActionListener {
-                override fun onSuccess() {
-                    Toast.makeText(
-                        applicationContext,
-                        "Successfully disconnected",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-
-                override fun onFailure(p0: Int) {
-                    Toast.makeText(applicationContext, "Disconnection fail $p0", Toast.LENGTH_LONG)
-                        .show()
-                }
-
-            })
-        }
-
         findViewById<Button>(R.id.disconnect).setOnClickListener {
             Timber.tag(TAG).d("Disconnecting...")
             manager?.requestGroupInfo(channel) { group ->
@@ -117,72 +77,125 @@ class MainActivity : ComponentActivity() {
                     manager?.removeGroup(channel, object : ActionListener {
 
                         override fun onSuccess() {
-                            Timber.tag(TAG).d("removeGroup onSuccess");
+                            Timber.tag(TAG).d("removeGroup onSuccess")
                         }
 
                         override fun onFailure(reason: Int) {
-                            Timber.tag(TAG).d("removeGroup onFailure $reason");
+                            Timber.tag(TAG).d("removeGroup onFailure $reason")
                         }
                     })
-                }else
+                } else
                     Timber.tag(TAG).d("Group is null")
             }
         }
 
-        findViewById<Button>(R.id.connect).setOnClickListener {
-            Timber.tag(TAG).d("Connecting...")
-            val config = WifiP2pConfig()
-            config.deviceAddress = device!!.deviceAddress
-            manager?.connect(channel, config, object : ActionListener {
+        Timer().scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                manager?.requestDiscoveryState(channel!!) {
+                    findViewById<TextView>(R.id.discover_status).setBackgroundColor(
+                        if (it == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED)
+                            Color.GREEN
+                        else
+                            Color.RED
+                    )
+                }
+            }
+        }, 0, 1000)
+
+        Utils.bindWifiDirectControls(
+            manager!!,
+            channel!!,
+            findViewById(R.id.listen_start),
+            findViewById(R.id.scan_start)
+        )
+    }
+
+    fun setFileChooserLauncher(launcher: ActivityResultLauncher<String>){
+        findViewById<Button>(R.id.main_choose_file).setOnClickListener {
+            Toast.makeText(this, "Choose file", Toast.LENGTH_SHORT).show()
+            launcher.launch("*/*")
+        }
+    }
+
+    fun getNewFileDescriptor(): ParcelFileDescriptor {
+        val exchanger = Exchanger<Uri>()
+
+        registerForActivityResult(CreateDocument("todo/todo")) { uri ->
+            exchanger.exchange(uri, 100, TimeUnit.MILLISECONDS)
+        }.launch("test.txt")
+
+        return contentResolver.openFileDescriptor(exchanger.exchange(null)!!, "r")!!
+    }
+
+    fun setWifiDirectPeers(deviceList: WifiP2pDeviceList) {
+        val deviceListView = findViewById<LinearLayout>(R.id.device_list)
+        val children = deviceListView.children as Sequence<WifiP2pDeviceView>
+        for (device in deviceList.deviceList) {
+            var deviceUpdated = false
+            for (deviceView: WifiP2pDeviceView in children) {
+                if (deviceView.device?.deviceAddress == device.deviceAddress) {
+                    deviceView.updateDevice(device)
+                    deviceUpdated = true
+                    break
+                }
+            }
+            if(deviceUpdated) continue
+            val disconnectOnClick = OnClickListener {
+                (it as Button).text = "▶️"
+                manager?.removeGroup(channel, null)
+            }
+            val connectOnClick = buildConnectClickListener(device, disconnectOnClick)
+            deviceListView.addView(WifiP2pDeviceView(device, this.applicationContext, connectOnClick))
+        }
+        deviceListView.forEach {
+            if(deviceList.get((it as WifiP2pDeviceView).device!!.deviceAddress) == null){
+                deviceListView.removeView(it)
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun buildConnectClickListener(device: WifiP2pDevice, disconnectOnClickListener: OnClickListener): OnClickListener{
+        var listener: OnClickListener? = null
+        listener = OnClickListener {
+            val cfg = WifiP2pConfig()
+            cfg.deviceAddress = device.deviceAddress
+            cfg.groupOwnerIntent = 0
+
+            manager?.connect(channel, cfg, object : ActionListener {
                 override fun onSuccess() {
-                    Timber.tag(TAG).d("Connected !!!")
-                    findViewById<TextView>(R.id.textView).text = "Connected !!!"
+                    Toast.makeText(
+                        this@MainActivity.applicationContext,
+                        "Connected to ${device.deviceName}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    it.setOnClickListener(disconnectOnClickListener)
+                    (it as Button).text = "❌"
                 }
 
                 override fun onFailure(reasonCode: Int) {
-                    Timber.tag(TAG).d("Failed to connect %s", reasonCode)
-                    findViewById<TextView>(R.id.textView).text = "Failed to connect $reasonCode"
+                    Toast.makeText(
+                        this@MainActivity.applicationContext,
+                        "Failed to connect to ${device.deviceName}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             })
-        }
 
-
-        Timer().scheduleAtFixedRate(object : TimerTask() {
-            @SuppressLint("MissingPermission")
-            override fun run() {
-//                Utils.checkWifiDirectPermissions(this@MainActivity)
-                manager?.discoverPeers(channel, object : ActionListener {
+            it.setOnClickListener{
+                manager?.cancelConnect(channel, object : ActionListener {
                     override fun onSuccess() {
-                        findViewById<TextView>(R.id.scan_status).setBackgroundColor(Color.GREEN)
+                        it.setOnClickListener(listener)
                     }
 
-                    override fun onFailure(reasonCode: Int) {
-                        Timber.tag("WIFI P2P SCAN").d("Failure $reasonCode")
-                        findViewById<TextView>(R.id.scan_status).setBackgroundColor(Color.RED)
+                    override fun onFailure(p0: Int) {
+                        it.setOnClickListener(listener)
                     }
                 })
             }
-        }, 1000, 1000)
-
-        findViewById<Button>(R.id.socket_connect).setOnClickListener {
-            manager?.clearServiceRequests(channel!!, object : ActionListener {
-                override fun onSuccess() {
-                    Timber.tag("WIFI P2P SCAN").d("Success")
-                }
-
-                override fun onFailure(p0: Int) {
-                    Timber.tag("WIFI P2P SCAN").d("Failure $p0")
-                }
-            })
         }
+        return listener
     }
-
-    private var device: WifiP2pDevice? = null
-
-    fun setDevice(device: WifiP2pDevice) {
-        this.device = device
-    }
-
     fun getPermissionRequestResult(): Boolean {
         return permissionRequestResults.take()!!
     }
