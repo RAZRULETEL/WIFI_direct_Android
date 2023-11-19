@@ -2,7 +2,6 @@ package com.mastik.wifidirect.tasks
 
 import android.os.Looper
 import android.os.NetworkOnMainThreadException
-import android.os.ParcelFileDescriptor
 import androidx.core.util.Consumer
 import androidx.core.util.Supplier
 import timber.log.Timber
@@ -72,7 +71,7 @@ class ServerStartTask(
         return communicator.getFileSender()
     }
 
-    override fun setOnNewFileListener(onNewFile: Supplier<ParcelFileDescriptor>) {
+    override fun setOnNewFileListener(onNewFile: Supplier<FileDescriptor>) {
         communicator.setOnNewFileListener(onNewFile)
     }
 }

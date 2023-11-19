@@ -26,6 +26,7 @@ import androidx.core.view.children
 import androidx.core.view.forEach
 import com.mastik.wifidirect.util.Utils
 import timber.log.Timber
+import java.io.FileDescriptor
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.Exchanger
@@ -46,6 +47,9 @@ class MainActivity : ComponentActivity() {
 
     private val permissionRequestResults: SynchronousQueue<Boolean> = SynchronousQueue(true)
 
+    private val fileExchanger = Exchanger<ParcelFileDescriptor>()
+    private lateinit var createFileUri: ActivityResultLauncher<String>
+
     @SuppressLint("MissingPermission")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +60,12 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             Timber.tag(TAG).d("Permission granted: $granted")
             permissionRequestResults.add(granted)
+        }
+        createFileUri = registerForActivityResult(CreateDocument("todo/todo")) { uri ->
+            if(uri != null)
+                fileExchanger.exchange(contentResolver.openFileDescriptor(uri, "w"), 100, TimeUnit.MILLISECONDS)
+            else
+                fileExchanger.exchange(null)
         }
 
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
@@ -118,13 +128,8 @@ class MainActivity : ComponentActivity() {
     }
 
     fun getNewFileDescriptor(): ParcelFileDescriptor {
-        val exchanger = Exchanger<Uri>()
-
-        registerForActivityResult(CreateDocument("todo/todo")) { uri ->
-            exchanger.exchange(uri, 100, TimeUnit.MILLISECONDS)
-        }.launch("test.txt")
-
-        return contentResolver.openFileDescriptor(exchanger.exchange(null)!!, "r")!!
+        createFileUri.launch("test.txt")
+        return fileExchanger.exchange(null)!!
     }
 
     fun setWifiDirectPeers(deviceList: WifiP2pDeviceList) {

@@ -97,9 +97,9 @@ class WiFiDirectBroadcastReceiver(
                                     }
                                 }
 
-                                communicator.setOnNewFileListener(){
+                                communicator.setOnNewFileListener{
                                     val parcel = activity.getNewFileDescriptor()
-                                    return@setOnNewFileListener parcel
+                                    return@setOnNewFileListener parcel.fileDescriptor
                                 }
 
                                 activity.findViewById<ImageButton>(R.id.message_send)

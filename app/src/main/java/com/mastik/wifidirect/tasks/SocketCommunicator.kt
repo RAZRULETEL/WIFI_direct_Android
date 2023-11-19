@@ -1,7 +1,6 @@
 package com.mastik.wifidirect.tasks
 
 import android.annotation.SuppressLint
-import android.os.ParcelFileDescriptor
 import androidx.core.util.Consumer
 import androidx.core.util.Supplier
 import com.mastik.wifidirect.tasks.Communicator.Companion.MAGIC_FILE_BYTE
@@ -16,6 +15,7 @@ import java.io.InputStreamReader
 import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.net.Socket
+import java.net.SocketException
 import java.nio.CharBuffer
 import java.nio.charset.Charset
 import java.util.concurrent.locks.ReentrantLock
@@ -66,10 +66,10 @@ class SocketCommunicator() : Communicator {
                 it.flush()
                 for (i in 0 until Int.SIZE_BYTES) mainOutStream!!.write(fileStream.available() shr (i * 8))
                 it.flush()
-                val arr = ByteArray(1024)
+                val arr = ByteArray(32768)
                 while (fileStream.available() > 0) {
                     println("Available: ${fileStream.available()}")
-                    val toRead = min(fileStream.available(), 1024)
+                    val toRead = min(fileStream.available(), 32768)
                     fileStream.readFully(arr, 0, toRead)
                     it.write(arr, 0, toRead)
                 }
@@ -82,7 +82,7 @@ class SocketCommunicator() : Communicator {
     }
 
     private var newMessageListener: Consumer<String>? = null
-    private var newFileListener: Supplier<ParcelFileDescriptor>? = null
+    private var newFileListener: Supplier<FileDescriptor>? = null
 
 
     @SuppressLint("NewApi")
@@ -116,7 +116,7 @@ class SocketCommunicator() : Communicator {
             }
             if (magic == MAGIC_FILE_BYTE) {
                 newFileListener?.get()?.let {
-                    val fileStream = FileOutputStream(it.fileDescriptor)
+                    val fileStream = FileOutputStream(it)
                     val buffer = ByteArray(32768)
 
                     var total: Long = 0
@@ -124,10 +124,11 @@ class SocketCommunicator() : Communicator {
                     var i = 0
                     while (dataSize > 0) {
                         val toRead = min(dataSize, buffer.size)
-                        dataSize -= rawStream.read(buffer, 0, toRead)
+                        val readed = rawStream.read(buffer, 0, toRead)
+                        dataSize -= readed
                         fileStream.write(buffer, 0, toRead)
 
-                        total += toRead
+                        total += readed
                         if (i % 400 == 0) {
                             val cost = System.currentTimeMillis() - start
                             System.out.printf(
@@ -140,12 +141,12 @@ class SocketCommunicator() : Communicator {
                         i++
                     }
                     fileStream.close()
-                    it.close()
                 }
                 println("Successfully readed file")
                 continue
             }
             println("Unknown magic number $magic")
+            if(magic == 0) throw SocketException("Unknown magic number")
         }
     }
 
@@ -161,7 +162,7 @@ class SocketCommunicator() : Communicator {
         return onFileSend
     }
 
-    override fun setOnNewFileListener(onNewFile: Supplier<ParcelFileDescriptor>) {
+    override fun setOnNewFileListener(onNewFile: Supplier<FileDescriptor>) {
         newFileListener = onNewFile
     }
 }
