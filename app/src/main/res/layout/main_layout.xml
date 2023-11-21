@@ -27,7 +27,7 @@
         android:layout_height="wrap_content"
         android:layout_weight="1">
 
-        <LinearLayout
+        <com.mastik.wifidirect.views.WifiP2pDeviceListView
             android:id="@+id/device_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

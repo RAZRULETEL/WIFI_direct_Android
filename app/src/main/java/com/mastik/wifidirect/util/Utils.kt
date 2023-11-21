@@ -5,39 +5,23 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
-import android.os.Looper
 import android.widget.CompoundButton
 import android.widget.ToggleButton
+import androidx.activity.ComponentActivity
 import androidx.core.app.ActivityCompat
 import com.mastik.wifidirect.MainActivity
 import timber.log.Timber
-import kotlin.random.Random
-import kotlin.system.exitProcess
 
 /**
  * Utilities class containing static methods
  */
 object Utils {
 
-    fun checkWifiDirectPermissions(activity: MainActivity) {
-        if (Looper.myLooper() == Looper.getMainLooper())
-            throw IllegalStateException("This method can only be called from not the main thread, because it will cause deadlock")
+    fun checkWifiDirectPermissions(activity: MainActivity) {// TODO Fix this
+//        if (Looper.myLooper() == Looper.getMainLooper())
+//            throw IllegalStateException("This method can only be called from not the main thread, because it will cause deadlock")
 
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.M)
-            return
-
-        if (
-            (Build.VERSION.SDK_INT > Build.VERSION_CODES.S_V2 ||
-                    ActivityCompat.checkSelfPermission(
-                        activity,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED) &&
-            (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                    ActivityCompat.checkSelfPermission(
-                        activity,
-                        Manifest.permission.NEARBY_WIFI_DEVICES
-                    ) == PackageManager.PERMISSION_GRANTED)
-        )
+        if(checkWifiDirectPermissionsSoft(activity))
             return
 
         Timber.tag("Utils").d("Permission not granted")
@@ -48,19 +32,17 @@ object Utils {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             perms += Manifest.permission.NEARBY_WIFI_DEVICES
 
-        val requestCode = Random.nextInt(Int.MAX_VALUE)
+        activity.requestPermissions(perms, 1243)
 
-        activity.requestPermissions(
-            perms,
-            requestCode,
-        )
 
-        if (!activity.getPermissionRequestResult())
-            exitProcess(1)
+//        if (!activity.permissionRequestResultExchanger.exchange(null, 100, TimeUnit.SECONDS).values.all { e -> e }){
+//            Toast.makeText(activity.applicationContext, "Всего хорошего", Toast.LENGTH_LONG).show()
+//            exitProcess(1)
+//        }
     }
 
-    fun checkWifiDirectPermissionsSoft(activity: MainActivity): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+    fun checkWifiDirectPermissionsSoft(activity: ComponentActivity): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M)
             return true
 
         if (

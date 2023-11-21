@@ -124,11 +124,11 @@ class SocketCommunicator() : Communicator {
                     var i = 0
                     while (dataSize > 0) {
                         val toRead = min(dataSize, buffer.size)
-                        val readed = rawStream.read(buffer, 0, toRead)
-                        dataSize -= readed
+                        rawStream.readNBytes(buffer, 0, toRead)// Some slower than read, but data is not damaged
+                        dataSize -= toRead
                         fileStream.write(buffer, 0, toRead)
 
-                        total += readed
+                        total += toRead
                         if (i % 400 == 0) {
                             val cost = System.currentTimeMillis() - start
                             System.out.printf(
