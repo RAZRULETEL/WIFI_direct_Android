@@ -6,39 +6,41 @@ import android.content.pm.PackageManager
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
 import android.widget.CompoundButton
+import android.widget.Toast
 import android.widget.ToggleButton
 import androidx.activity.ComponentActivity
 import androidx.core.app.ActivityCompat
 import com.mastik.wifidirect.MainActivity
+import com.mastik.wifidirect.tasks.TaskExecutors
 import timber.log.Timber
+import kotlin.system.exitProcess
 
 /**
  * Utilities class containing static methods
  */
 object Utils {
 
-    fun checkWifiDirectPermissions(activity: MainActivity) {// TODO Fix this
-//        if (Looper.myLooper() == Looper.getMainLooper())
-//            throw IllegalStateException("This method can only be called from not the main thread, because it will cause deadlock")
-
+    fun checkWifiDirectPermissions(activity: MainActivity) {
         if(checkWifiDirectPermissionsSoft(activity))
             return
 
         Timber.tag("Utils").d("Permission not granted")
 
-        var perms = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        var perms: Array<String> = arrayOf()
+        if(Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2)
+            perms += Manifest.permission.ACCESS_FINE_LOCATION
+        else
             perms += Manifest.permission.NEARBY_WIFI_DEVICES
 
-        activity.requestPermissions(perms, 1243)
+        activity.requestPermissions.launch(perms)
 
-
-//        if (!activity.permissionRequestResultExchanger.exchange(null, 100, TimeUnit.SECONDS).values.all { e -> e }){
-//            Toast.makeText(activity.applicationContext, "Всего хорошего", Toast.LENGTH_LONG).show()
-//            exitProcess(1)
-//        }
+        TaskExecutors.getCachedPool().execute {
+            if (!activity.permissionRequestResultExchanger.exchange(null).values.all { e -> e })
+                activity.runOnUiThread {
+                    Toast.makeText(activity.applicationContext, "Всего хорошего", Toast.LENGTH_LONG).show()
+                    exitProcess(1)
+                }
+        }
     }
 
     fun checkWifiDirectPermissionsSoft(activity: ComponentActivity): Boolean {

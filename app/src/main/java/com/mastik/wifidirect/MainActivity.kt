@@ -51,13 +51,18 @@ class MainActivity : ComponentActivity() {
 
         Timber.plant(Timber.DebugTree())
 
-        requestPermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-            Timber.tag(TAG).d("Permission granted: $granted")
-//            permissionRequestResultExchanger.exchange(granted, 100, TimeUnit.MILLISECONDS)
-        }
+        requestPermissions =
+            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+                Timber.tag(TAG).d("Permission granted: $granted")
+                permissionRequestResultExchanger.exchange(granted, 100, TimeUnit.MILLISECONDS)
+            }
         createFileUri = registerForActivityResult(CreateDocument("todo/todo")) { uri ->
-            if(uri != null)
-                fileExchanger.exchange(contentResolver.openFileDescriptor(uri, "w"), 100, TimeUnit.MILLISECONDS)
+            if (uri != null)
+                fileExchanger.exchange(
+                    contentResolver.openFileDescriptor(uri, "w"),
+                    100,
+                    TimeUnit.MILLISECONDS
+                )
             else
                 fileExchanger.exchange(null)
         }
@@ -72,43 +77,40 @@ class MainActivity : ComponentActivity() {
             receiver = WiFiDirectBroadcastReceiver(manager, channel, this)
         }
 
-        Toast.makeText(this.applicationContext,
-            "Permissions ${if(Utils.checkWifiDirectPermissionsSoft(this)) "granted" else "not granted"}", Toast.LENGTH_LONG).show()
-
         registerReceiver(receiver, intentFilter)
 
         findViewById<Button>(R.id.disconnect).setOnClickListener {
-                Timber.tag(TAG).d("Disconnecting...")
-                manager?.requestGroupInfo(channel) { group ->
-                    if (group != null) {
-                        manager?.removeGroup(channel, object : ActionListener {
+            Timber.tag(TAG).d("Disconnecting...")
+            manager?.requestGroupInfo(channel) { group ->
+                if (group != null) {
+                    manager?.removeGroup(channel, object : ActionListener {
 
-                            override fun onSuccess() {
-                                Timber.tag(TAG).d("removeGroup onSuccess")
-                            }
+                        override fun onSuccess() {
+                            Timber.tag(TAG).d("removeGroup onSuccess")
+                        }
 
-                            override fun onFailure(reason: Int) {
-                                Timber.tag(TAG).d("removeGroup onFailure $reason")
-                            }
-                        })
-                    } else
-                        Timber.tag(TAG).d("Group is null")
-                }
+                        override fun onFailure(reason: Int) {
+                            Timber.tag(TAG).d("removeGroup onFailure $reason")
+                        }
+                    })
+                } else
+                    Timber.tag(TAG).d("Group is null")
+            }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-        Timer().scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                manager?.requestDiscoveryState(channel!!) {
-                    findViewById<TextView>(R.id.discover_status).setBackgroundColor(
-                        if (it == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED)
-                            Color.GREEN
-                        else
-                            Color.RED
-                    )
+            Timer().scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    manager?.requestDiscoveryState(channel!!) {
+                        findViewById<TextView>(R.id.discover_status).setBackgroundColor(
+                            if (it == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED)
+                                Color.GREEN
+                            else
+                                Color.RED
+                        )
+                    }
                 }
-            }
-        }, 0, 1000)
+            }, 0, 1000)
 
         Utils.bindWifiDirectControls(
             manager!!,
@@ -116,9 +118,15 @@ class MainActivity : ComponentActivity() {
             findViewById(R.id.listen_start),
             findViewById(R.id.scan_start)
         )
+
+
+
+
+
+        Utils.checkWifiDirectPermissions(this)
     }
 
-    fun setFileChooserLauncher(launcher: ActivityResultLauncher<String>){
+    fun setFileChooserLauncher(launcher: ActivityResultLauncher<String>) {
         findViewById<Button>(R.id.main_choose_file).setOnClickListener {
             Toast.makeText(this, "Choose file", Toast.LENGTH_SHORT).show()
             launcher.launch("*/*")
@@ -132,7 +140,7 @@ class MainActivity : ComponentActivity() {
 
     fun setWifiDirectPeers(deviceList: WifiP2pDeviceList) {
         val deviceListView = findViewById<WifiP2pDeviceListView>(R.id.device_list)
-        for(device in deviceList.deviceList)
+        for (device in deviceList.deviceList)
             deviceListView.addOrUpdateDevice(device, manager!!, channel!!)
 
     }
