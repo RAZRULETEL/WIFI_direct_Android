@@ -14,10 +14,12 @@ import android.widget.ImageButton
 import android.widget.TextView
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.contract.ActivityResultContracts
-import com.mastik.wifidirect.tasks.Communicator
+import androidx.core.net.toFile
 import com.mastik.wifidirect.tasks.ConnectTask
 import com.mastik.wifidirect.tasks.ServerStartTask
 import com.mastik.wifidirect.tasks.TaskExecutors
+import com.mastik.wifidirect.transfer.Communicator
+import com.mastik.wifidirect.transfer.FileDescriptorTransferInfo
 import com.mastik.wifidirect.util.Utils
 import timber.log.Timber
 import java.io.FileDescriptor
@@ -98,8 +100,8 @@ class WiFiDirectBroadcastReceiver(
                                 }
 
                                 communicator.setOnNewFileListener{
-                                    val parcel = activity.getNewFileDescriptor()
-                                    return@setOnNewFileListener parcel.fileDescriptor
+                                    val parcel = activity.getNewFileDescriptor(it)
+                                    return@setOnNewFileListener FileDescriptorTransferInfo(parcel.fileDescriptor, it)
                                 }
 
                                 activity.findViewById<ImageButton>(R.id.message_send)
@@ -123,7 +125,8 @@ class WiFiDirectBroadcastReceiver(
                                             val fileDescriptor: FileDescriptor =
                                                 parcelFileDescriptor.fileDescriptor
 
-                                            communicator.getFileSender().accept(fileDescriptor)
+                                            communicator.getFileSender().accept(
+                                                FileDescriptorTransferInfo(fileDescriptor, uri.toFile().name))
 
                                             parcelFileDescriptor.close()
                                         }

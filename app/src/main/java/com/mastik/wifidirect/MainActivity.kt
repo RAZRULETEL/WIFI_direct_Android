@@ -133,8 +133,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun getNewFileDescriptor(): ParcelFileDescriptor {
-        createFileUri.launch("test.txt")
+    fun getNewFileDescriptor(fileName: String): ParcelFileDescriptor {
+        createFileUri.launch(fileName)
         return fileExchanger.exchange(null)!!
     }
 

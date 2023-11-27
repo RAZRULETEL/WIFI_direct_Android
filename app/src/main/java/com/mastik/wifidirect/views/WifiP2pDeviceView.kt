@@ -28,14 +28,20 @@ class WifiP2pDeviceView(context: Context): LinearLayout(context) {
     }
 
     init {
+        this.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+
         val infoLayout = LinearLayout(context)
-        infoLayout.orientation = LinearLayout.VERTICAL
+        infoLayout.orientation = VERTICAL
+        infoLayout.layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
 
         deviceName = TextView(context)
         deviceStatus = TextView(context)
 
         connectButton = Button(context)
         connectButton.text = "▶️"
+        val buttonParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+        buttonParams.rightMargin = 50
+        connectButton.layoutParams = buttonParams
 
         infoLayout.addView(deviceName)
         infoLayout.addView(deviceStatus)

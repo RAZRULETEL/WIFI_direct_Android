@@ -3,9 +3,10 @@ package com.mastik.wifidirect.tasks
 import android.os.Looper
 import android.os.NetworkOnMainThreadException
 import androidx.core.util.Consumer
-import androidx.core.util.Supplier
+import androidx.core.util.Function
+import com.mastik.wifidirect.transfer.Communicator
+import com.mastik.wifidirect.transfer.FileDescriptorTransferInfo
 import timber.log.Timber
-import java.io.FileDescriptor
 import java.net.BindException
 import java.net.ServerSocket
 
@@ -67,11 +68,11 @@ class ServerStartTask(
     override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
         communicator.setOnNewMessageListener(onNewMessage)
     }
-    override fun getFileSender(): Consumer<FileDescriptor> {
+    override fun getFileSender(): Consumer<FileDescriptorTransferInfo> {
         return communicator.getFileSender()
     }
 
-    override fun setOnNewFileListener(onNewFile: Supplier<FileDescriptor>) {
+    override fun setOnNewFileListener(onNewFile: Function<String, FileDescriptorTransferInfo>) {
         communicator.setOnNewFileListener(onNewFile)
     }
 }

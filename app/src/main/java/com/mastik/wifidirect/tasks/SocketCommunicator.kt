@@ -2,9 +2,12 @@ package com.mastik.wifidirect.tasks
 
 import android.annotation.SuppressLint
 import androidx.core.util.Consumer
+import androidx.core.util.Function
 import androidx.core.util.Supplier
-import com.mastik.wifidirect.tasks.Communicator.Companion.MAGIC_FILE_BYTE
-import com.mastik.wifidirect.tasks.Communicator.Companion.MAGIC_STRING_BYTE
+import com.mastik.wifidirect.transfer.Communicator
+import com.mastik.wifidirect.transfer.Communicator.Companion.MAGIC_FILE_BYTE
+import com.mastik.wifidirect.transfer.Communicator.Companion.MAGIC_STRING_BYTE
+import com.mastik.wifidirect.transfer.FileDescriptorTransferInfo
 import timber.log.Timber
 import java.io.DataInputStream
 import java.io.FileDescriptor
@@ -24,6 +27,8 @@ import kotlin.math.min
 class SocketCommunicator() : Communicator {
     companion object {
         val TAG: String = SocketCommunicator::class.simpleName!!
+
+        const val DEFAULT_BUFFER_SIZE = 32_768
     }
 
     private var mainOutStream: OutputStream? = null
@@ -56,20 +61,25 @@ class SocketCommunicator() : Communicator {
     }
 
 
-    private val onFileSend: Consumer<FileDescriptor> = Consumer<FileDescriptor> { file ->
-        Timber.tag(TAG).d("Send file")
+    private val onFileSend: Consumer<FileDescriptorTransferInfo> = Consumer<FileDescriptorTransferInfo> { file ->
+        Timber.tag(TAG).d("Send file: ${file.name}")
         mainOutStream?.let {
-            val fileStream = DataInputStream(FileInputStream(file))
+            val fileStream = DataInputStream(FileInputStream(file.descriptor))
             writeLock.lock()
             try {
                 it.write(MAGIC_FILE_BYTE)
                 it.flush()
                 for (i in 0 until Int.SIZE_BYTES) mainOutStream!!.write(fileStream.available() shr (i * 8))
                 it.flush()
-                val arr = ByteArray(32768)
+
+                outTextStream!!.write(file.name.toCharArray())
+                outTextStream!!.write(0)
+                outTextStream!!.flush()
+
+                val arr = ByteArray(DEFAULT_BUFFER_SIZE)
                 while (fileStream.available() > 0) {
                     println("Available: ${fileStream.available()}")
-                    val toRead = min(fileStream.available(), 32768)
+                    val toRead = min(fileStream.available(), DEFAULT_BUFFER_SIZE)
                     fileStream.readFully(arr, 0, toRead)
                     it.write(arr, 0, toRead)
                 }
@@ -82,7 +92,7 @@ class SocketCommunicator() : Communicator {
     }
 
     private var newMessageListener: Consumer<String>? = null
-    private var newFileListener: Supplier<FileDescriptor>? = null
+    private var newFileListener: Function<String, FileDescriptorTransferInfo>? = null
 
 
     @SuppressLint("NewApi")
@@ -115,9 +125,19 @@ class SocketCommunicator() : Communicator {
                 continue
             }
             if (magic == MAGIC_FILE_BYTE) {
-                newFileListener?.get()?.let {
-                    val fileStream = FileOutputStream(it)
-                    val buffer = ByteArray(32768)
+                var nameLength = 0
+                messageBuff.clear()
+                stream.read(messageBuff.array(), nameLength, 1)
+                while(messageBuff[nameLength].code and 0xFFFF != 0) {
+                    stream.read(messageBuff.array(), ++nameLength, 1)
+                }
+
+                val fileName = messageBuff.position(0).toString().substring(0, nameLength - 1)
+                messageBuff.clear()
+
+                newFileListener?.apply(fileName)?.let {
+                    val fileStream = FileOutputStream(it.descriptor)
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
 
                     var total: Long = 0
                     val start = System.currentTimeMillis()
@@ -158,11 +178,11 @@ class SocketCommunicator() : Communicator {
         newMessageListener = onNewMessage
     }
 
-    override fun getFileSender(): Consumer<FileDescriptor> {
+    override fun getFileSender(): Consumer<FileDescriptorTransferInfo> {
         return onFileSend
     }
 
-    override fun setOnNewFileListener(onNewFile: Supplier<FileDescriptor>) {
+    override fun setOnNewFileListener(onNewFile: Function<String, FileDescriptorTransferInfo>) {
         newFileListener = onNewFile
     }
 }
