@@ -1,4 +1,4 @@
-package com.mastik.wifidirect.views
+package com.mastik.wifi_direct.views
 
 import android.annotation.SuppressLint
 import android.content.Context

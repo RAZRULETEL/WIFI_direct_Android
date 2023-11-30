@@ -1,4 +1,4 @@
-package com.mastik.wifidirect.tasks
+package com.mastik.wifi_direct.tasks
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors

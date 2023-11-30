@@ -1,4 +1,4 @@
-package com.mastik.wifidirect.views
+package com.mastik.wifi_direct.views
 
 import android.content.Context
 import android.net.wifi.p2p.WifiP2pDevice

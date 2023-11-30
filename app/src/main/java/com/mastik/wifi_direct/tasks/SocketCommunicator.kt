@@ -1,16 +1,14 @@
-package com.mastik.wifidirect.tasks
+package com.mastik.wifi_direct.tasks
 
 import android.annotation.SuppressLint
 import androidx.core.util.Consumer
 import androidx.core.util.Function
-import androidx.core.util.Supplier
-import com.mastik.wifidirect.transfer.Communicator
-import com.mastik.wifidirect.transfer.Communicator.Companion.MAGIC_FILE_BYTE
-import com.mastik.wifidirect.transfer.Communicator.Companion.MAGIC_STRING_BYTE
-import com.mastik.wifidirect.transfer.FileDescriptorTransferInfo
+import com.mastik.wifi_direct.transfer.Communicator
+import com.mastik.wifi_direct.transfer.Communicator.Companion.MAGIC_FILE_BYTE
+import com.mastik.wifi_direct.transfer.Communicator.Companion.MAGIC_STRING_BYTE
+import com.mastik.wifi_direct.transfer.FileDescriptorTransferInfo
 import timber.log.Timber
 import java.io.DataInputStream
-import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
@@ -24,7 +22,7 @@ import java.nio.charset.Charset
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.min
 
-class SocketCommunicator() : Communicator {
+open class SocketCommunicator() : Communicator {
     companion object {
         val TAG: String = SocketCommunicator::class.simpleName!!
 
@@ -166,21 +164,17 @@ class SocketCommunicator() : Communicator {
                 continue
             }
             println("Unknown magic number $magic")
-            if(magic == 0) throw SocketException("Unknown magic number")
+            throw SocketException("Unknown magic number")
         }
     }
 
-    override fun getMessageSender(): Consumer<String> {
-        return onMessageSend
-    }
+    override fun getMessageSender(): Consumer<String> = onMessageSend
 
     override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
         newMessageListener = onNewMessage
     }
 
-    override fun getFileSender(): Consumer<FileDescriptorTransferInfo> {
-        return onFileSend
-    }
+    override fun getFileSender(): Consumer<FileDescriptorTransferInfo> = onFileSend
 
     override fun setOnNewFileListener(onNewFile: Function<String, FileDescriptorTransferInfo>) {
         newFileListener = onNewFile

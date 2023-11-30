@@ -1,4 +1,4 @@
-package com.mastik.wifidirect.transfer
+package com.mastik.wifi_direct.transfer
 
 import androidx.core.util.Consumer
 import androidx.core.util.Function

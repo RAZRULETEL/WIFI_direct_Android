@@ -1,26 +1,21 @@
-package com.mastik.wifidirect.tasks
+package com.mastik.wifi_direct.tasks
 
 import android.os.Looper
 import android.os.NetworkOnMainThreadException
-import androidx.core.util.Consumer
-import androidx.core.util.Function
-import com.mastik.wifidirect.transfer.Communicator
-import com.mastik.wifidirect.transfer.FileDescriptorTransferInfo
+import com.mastik.wifi_direct.transfer.AbstractCommunicatorTask
 import timber.log.Timber
 import java.net.BindException
 import java.net.ServerSocket
 
 class ServerStartTask(
     private val defaultPort: Int,
-    ) : Communicator, Runnable {
+    ) : AbstractCommunicatorTask() {
 
     companion object {
         val TAG: String = ServerStartTask::class.simpleName!!
 
         const val MAX_PORT_OFFSET = 10
     }
-
-    private var communicator: SocketCommunicator = SocketCommunicator()
 
     override fun run() {
         if(Looper.myLooper() == Looper.getMainLooper())
@@ -51,7 +46,7 @@ class ServerStartTask(
 
 
         try {
-            val client = server.accept()
+            val client = server.accept()// TODO: accept multiple clients
 
             server.close()
 
@@ -59,20 +54,5 @@ class ServerStartTask(
         } catch (e: Exception) {
             e.printStackTrace()
         }
-    }
-
-    override fun getMessageSender(): Consumer<String>{
-        return communicator.getMessageSender()
-    }
-
-    override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
-        communicator.setOnNewMessageListener(onNewMessage)
-    }
-    override fun getFileSender(): Consumer<FileDescriptorTransferInfo> {
-        return communicator.getFileSender()
-    }
-
-    override fun setOnNewFileListener(onNewFile: Function<String, FileDescriptorTransferInfo>) {
-        communicator.setOnNewFileListener(onNewFile)
     }
 }

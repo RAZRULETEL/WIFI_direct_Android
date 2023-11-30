@@ -1,4 +1,4 @@
-package com.mastik.wifidirect
+package com.mastik.wifi_direct
 
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
@@ -15,12 +15,13 @@ import android.widget.TextView
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.net.toFile
-import com.mastik.wifidirect.tasks.ConnectTask
-import com.mastik.wifidirect.tasks.ServerStartTask
-import com.mastik.wifidirect.tasks.TaskExecutors
-import com.mastik.wifidirect.transfer.Communicator
-import com.mastik.wifidirect.transfer.FileDescriptorTransferInfo
-import com.mastik.wifidirect.util.Utils
+import com.mastik.wifi_direct.tasks.ConnectTask
+import com.mastik.wifi_direct.tasks.ServerStartTask
+import com.mastik.wifi_direct.tasks.TaskExecutors
+import com.mastik.wifi_direct.transfer.Communicator
+import com.mastik.wifi_direct.transfer.FileDescriptorTransferInfo
+import com.mastik.wifi_direct.util.Utils
+import com.mastik.wifidirect.R
 import timber.log.Timber
 import java.io.FileDescriptor
 

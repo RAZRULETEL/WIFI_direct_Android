@@ -1,4 +1,4 @@
-package com.mastik.wifidirect
+package com.mastik.wifi_direct
 
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
@@ -18,8 +18,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
-import com.mastik.wifidirect.util.Utils
-import com.mastik.wifidirect.views.WifiP2pDeviceListView
+import com.mastik.wifi_direct.util.Utils
+import com.mastik.wifi_direct.views.WifiP2pDeviceListView
+import com.mastik.wifidirect.R
 import timber.log.Timber
 import java.util.Timer
 import java.util.TimerTask

@@ -1,4 +1,4 @@
-package com.mastik.wifidirect.util
+package com.mastik.wifi_direct.util
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -10,8 +10,8 @@ import android.widget.Toast
 import android.widget.ToggleButton
 import androidx.activity.ComponentActivity
 import androidx.core.app.ActivityCompat
-import com.mastik.wifidirect.MainActivity
-import com.mastik.wifidirect.tasks.TaskExecutors
+import com.mastik.wifi_direct.MainActivity
+import com.mastik.wifi_direct.tasks.TaskExecutors
 import timber.log.Timber
 import kotlin.system.exitProcess
 
