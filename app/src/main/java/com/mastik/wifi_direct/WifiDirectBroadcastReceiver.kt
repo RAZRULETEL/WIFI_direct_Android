@@ -21,7 +21,6 @@ import com.mastik.wifi_direct.tasks.TaskExecutors
 import com.mastik.wifi_direct.transfer.Communicator
 import com.mastik.wifi_direct.transfer.FileDescriptorTransferInfo
 import com.mastik.wifi_direct.util.Utils
-import com.mastik.wifidirect.R
 import timber.log.Timber
 import java.io.FileDescriptor
 

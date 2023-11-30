@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.mastik.wifidirect'
+    namespace 'com.mastik.wifi_direct'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.mastik.wifidirect"
+        applicationId "com.mastik.wifi_direct"
         minSdk 21
         targetSdk 34
         versionCode 1

@@ -20,7 +20,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import com.mastik.wifi_direct.util.Utils
 import com.mastik.wifi_direct.views.WifiP2pDeviceListView
-import com.mastik.wifidirect.R
 import timber.log.Timber
 import java.util.Timer
 import java.util.TimerTask
@@ -55,7 +54,7 @@ class MainActivity : ComponentActivity() {
         requestPermissions =
             registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
                 Timber.tag(TAG).d("Permission granted: $granted")
-                permissionRequestResultExchanger.exchange(granted, 100, TimeUnit.MILLISECONDS)
+                permissionRequestResultExchanger.exchange(granted, 1000, TimeUnit.MILLISECONDS)
             }
         createFileUri = registerForActivityResult(CreateDocument("todo/todo")) { uri ->
             if (uri != null)
@@ -65,7 +64,7 @@ class MainActivity : ComponentActivity() {
                     TimeUnit.MILLISECONDS
                 )
             else
-                fileExchanger.exchange(null)
+                fileExchanger.exchange(null, 100, TimeUnit.MILLISECONDS)
         }
 
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
