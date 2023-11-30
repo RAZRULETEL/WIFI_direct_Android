@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "com.mastik.wifi_direct"
-        minSdk 21
+        minSdk 24
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -27,11 +27,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_9
+        targetCompatibility JavaVersion.VERSION_1_9
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '9'
 
         freeCompilerArgs += [
                 "-P",
@@ -39,7 +39,7 @@ android {
         ]
     }
     buildFeatures {
-        compose true
+        compose false
     }
     composeOptions {
         kotlinCompilerExtensionVersion '1.5.3'

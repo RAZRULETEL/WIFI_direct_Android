@@ -1,8 +1,8 @@
 package com.mastik.wifi_direct.transfer
 
-import androidx.core.util.Consumer
-import androidx.core.util.Function
 import com.mastik.wifi_direct.tasks.SocketCommunicator
+import java.util.function.Consumer
+import java.util.function.Function
 
 abstract class AbstractCommunicatorTask: Runnable, Communicator {
     protected val communicator: SocketCommunicator = SocketCommunicator()

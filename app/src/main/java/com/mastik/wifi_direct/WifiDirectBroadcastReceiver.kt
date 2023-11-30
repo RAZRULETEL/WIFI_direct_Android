@@ -135,7 +135,7 @@ class WiFiDirectBroadcastReceiver(
 
 
 
-                                TaskExecutors.getFixedPool().execute(communicator as Runnable)
+                                TaskExecutors.getCachedPool().execute(communicator as Runnable)
                             }
                         }
                     })

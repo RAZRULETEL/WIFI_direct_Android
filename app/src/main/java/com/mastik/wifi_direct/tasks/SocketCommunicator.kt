@@ -1,8 +1,6 @@
 package com.mastik.wifi_direct.tasks
 
 import android.annotation.SuppressLint
-import androidx.core.util.Consumer
-import androidx.core.util.Function
 import com.mastik.wifi_direct.transfer.Communicator
 import com.mastik.wifi_direct.transfer.Communicator.Companion.MAGIC_FILE_BYTE
 import com.mastik.wifi_direct.transfer.Communicator.Companion.MAGIC_STRING_BYTE
@@ -20,6 +18,8 @@ import java.net.SocketException
 import java.nio.CharBuffer
 import java.nio.charset.Charset
 import java.util.concurrent.locks.ReentrantLock
+import java.util.function.Consumer
+import java.util.function.Function
 import kotlin.math.min
 
 open class SocketCommunicator() : Communicator {

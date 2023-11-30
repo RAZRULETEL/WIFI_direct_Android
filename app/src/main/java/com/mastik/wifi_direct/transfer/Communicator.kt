@@ -1,7 +1,7 @@
 package com.mastik.wifi_direct.transfer
 
-import androidx.core.util.Consumer
-import androidx.core.util.Function
+import java.util.function.Function
+import java.util.function.Consumer
 
 interface Communicator {
     abstract fun getMessageSender(): Consumer<String>
