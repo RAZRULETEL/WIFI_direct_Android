@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
         requestPermissions =
             registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
                 Timber.tag(TAG).d("Permission granted: $granted")
-                permissionRequestResultExchanger.exchange(granted, 1000, TimeUnit.MILLISECONDS)
+                permissionRequestResultExchanger.exchange(granted)
             }
         createFileUri = registerForActivityResult(CreateDocument("todo/todo")) { uri ->
             if (uri != null)
@@ -142,7 +142,10 @@ class MainActivity : ComponentActivity() {
         val deviceListView = findViewById<WifiP2pDeviceListView>(R.id.device_list)
         for (device in deviceList.deviceList)
             deviceListView.addOrUpdateDevice(device, manager!!, channel!!)
-
+        deviceListView.getDevices().forEach {device ->
+            if(!deviceList.deviceList.any { e -> e.deviceAddress == device.deviceAddress })
+                deviceListView.removeDevice(device)
+        }
     }
 
     companion object {

@@ -41,7 +41,7 @@ class WifiP2pDeviceListView(context: Context, attributes: AttributeSet? = null):
         }
     }
 
-    fun getDevices(): Sequence<WifiP2pDeviceView>{
-        return children.map { e -> if(e is WifiP2pDeviceView) e else throw IllegalStateException("Device list contains illegal child") }
+    fun getDevices(): Sequence<WifiP2pDevice>{
+        return children.map { e -> if(e is WifiP2pDeviceView) e.device else throw IllegalStateException("Device list contains illegal child") }
     }
 }

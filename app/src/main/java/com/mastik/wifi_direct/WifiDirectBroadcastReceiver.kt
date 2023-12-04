@@ -10,11 +10,11 @@ import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.ParcelFileDescriptor
 import android.os.Parcelable
+import android.provider.OpenableColumns
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.net.toFile
 import com.mastik.wifi_direct.tasks.ConnectTask
 import com.mastik.wifi_direct.tasks.ServerStartTask
 import com.mastik.wifi_direct.tasks.TaskExecutors
@@ -126,7 +126,7 @@ class WiFiDirectBroadcastReceiver(
                                                 parcelFileDescriptor.fileDescriptor
 
                                             communicator.getFileSender().accept(
-                                                FileDescriptorTransferInfo(fileDescriptor, uri.toFile().name))
+                                                FileDescriptorTransferInfo(fileDescriptor, uri.getName(activity.applicationContext)))
 
                                             parcelFileDescriptor.close()
                                         }
@@ -152,6 +152,15 @@ class WiFiDirectBroadcastReceiver(
                     }"
                 )
         }
+    }
+
+    fun Uri.getName(context: Context): String {
+        val returnCursor = context.contentResolver.query(this, null, null, null, null)!!
+        val nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        returnCursor.moveToFirst()
+        val fileName = returnCursor.getString(nameIndex)
+        returnCursor.close()
+        return fileName
     }
 
     companion object {

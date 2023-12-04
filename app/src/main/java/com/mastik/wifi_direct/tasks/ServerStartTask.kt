@@ -2,7 +2,6 @@ package com.mastik.wifi_direct.tasks
 
 import android.os.Looper
 import android.os.NetworkOnMainThreadException
-import com.mastik.wifi_direct.transfer.AbstractCommunicatorTask
 import timber.log.Timber
 import java.net.BindException
 import java.net.ServerSocket
