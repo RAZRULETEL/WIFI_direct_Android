@@ -83,14 +83,17 @@ class WifiP2pDeviceView(context: Context): LinearLayout(context) {
                 }
             })
 
+            (it as Button).text = "⏹️"
             it.setOnClickListener{
                 manager.cancelConnect(channel, object : WifiP2pManager.ActionListener {
                     override fun onSuccess() {
                         it.setOnClickListener(listener)
+                        (it as Button).text = "▶️"
                     }
 
                     override fun onFailure(p0: Int) {
                         it.setOnClickListener(listener)
+                        (it as Button).text = "▶️"
                     }
                 })
             }
