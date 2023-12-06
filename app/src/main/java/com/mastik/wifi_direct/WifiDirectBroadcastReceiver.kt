@@ -8,6 +8,7 @@ import android.net.NetworkInfo
 import android.net.Uri
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
+import android.net.wifi.p2p.WifiP2pManager.ActionListener
 import android.os.ParcelFileDescriptor
 import android.os.Parcelable
 import android.provider.OpenableColumns
@@ -80,14 +81,13 @@ class WiFiDirectBroadcastReceiver(
                                 if (info.groupOwnerAddress.hostAddress != null)
                                     task = ConnectTask(
                                         info.groupOwnerAddress.hostAddress!!,
-                                        50_001
+                                        MainActivity.DEFAULT_P2P_SERVER_PORT
                                     )
                                 else
                                     Timber.tag(TAG).e("Group owner address is null")
                             } else {
-                                task = ServerStartTask(
-                                    50_001,
-                                )
+                                if(!ServerStartTask.isServerRunning())
+                                    task = ServerStartTask(MainActivity.DEFAULT_P2P_SERVER_PORT)
                             }
 
 
@@ -99,13 +99,10 @@ class WiFiDirectBroadcastReceiver(
                                     }
                                 }
 
-                                communicator.setOnNewFileListener{
-                                    val parcel = activity.getNewFileDescriptor(it)
-                                    return@setOnNewFileListener FileDescriptorTransferInfo(parcel.fileDescriptor, it)
-                                }
+                                communicator.setOnNewFileListener(activity::getNewFileDescriptor)
 
                                 activity.findViewById<ImageButton>(R.id.message_send)
-                                    .setOnClickListener {_ ->
+                                    .setOnClickListener {
                                         TaskExecutors.getCachedPool().execute {
                                             communicator.getMessageSender().accept(
                                                 activity.findViewById<TextView>(R.id.message_text).text.toString()
@@ -151,6 +148,21 @@ class WiFiDirectBroadcastReceiver(
                         ) as WifiP2pDevice?
                     }"
                 )
+        } else if (WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION == action) {
+            val state = intent.getIntExtra(WifiP2pManager.EXTRA_DISCOVERY_STATE, -1)
+
+            Timber.tag(TAG).d("P2P Discovery state changed - $state")
+            activity.updateDiscoveryState(state)
+
+            if(state == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED){
+
+            } else if (state == WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED) {
+                manager?.discoverPeers(channel, object : ActionListener {
+                    override fun onSuccess() {}
+
+                    override fun onFailure(p0: Int) {}
+                })
+            }
         }
     }
 
