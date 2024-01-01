@@ -18,13 +18,10 @@ class WifiP2pDeviceView(context: Context): LinearLayout(context) {
     lateinit var device: WifiP2pDevice
         private set
 
+    private var disconnectOnClickListener: OnClickListener? = null
+
     constructor(device: WifiP2pDevice, context: Context): this(context){
         updateDevice(device)
-    }
-
-    constructor(device: WifiP2pDevice, context: Context, connectClickListener: OnClickListener): this(context){
-        updateDevice(device)
-        this.connectButton.setOnClickListener(connectClickListener)
     }
 
     init {
@@ -52,15 +49,22 @@ class WifiP2pDeviceView(context: Context): LinearLayout(context) {
 
     fun updateDevice(device: WifiP2pDevice){
         this.device = device
-        deviceName.text = device.deviceName
-        deviceStatus.text = STATUS_MAP[device.status]
+        this.post {
+            deviceName.text = device.deviceName
+            deviceStatus.text = STATUS_MAP[device.status]
+            if(device.status == WifiP2pDevice.CONNECTED){
+                connectButton.setOnClickListener(disconnectOnClickListener)
+                connectButton.text = "❌"
+            }
+        }
+
     }
 
     @SuppressLint("MissingPermission")
     fun setUpActionListener(manager: WifiP2pManager, channel: WifiP2pManager.Channel){
         var listener: OnClickListener? = null
 
-        val disconnectOnClickListener = OnClickListener {
+        disconnectOnClickListener = OnClickListener {
             (it as Button).text = "▶️"
             it.setOnClickListener(listener)
             manager.removeGroup(channel, null)
@@ -73,8 +77,20 @@ class WifiP2pDeviceView(context: Context): LinearLayout(context) {
 
             manager.connect(channel, cfg, object : WifiP2pManager.ActionListener {
                 override fun onSuccess() {
-                    it.setOnClickListener(disconnectOnClickListener)
-                    (it as Button).text = "❌"
+                    (it as Button).text = "⏹️"
+                    it.setOnClickListener{
+                        manager.cancelConnect(channel, object : WifiP2pManager.ActionListener {
+                            override fun onSuccess() {
+                                it.setOnClickListener(listener)
+                                (it as Button).text = "▶️"
+                            }
+
+                            override fun onFailure(p0: Int) {
+                                it.setOnClickListener(listener)
+                                (it as Button).text = "▶️"
+                            }
+                        })
+                    }
                 }
 
                 override fun onFailure(reasonCode: Int) {
@@ -82,21 +98,6 @@ class WifiP2pDeviceView(context: Context): LinearLayout(context) {
                     (it as Button).text = "▶️"
                 }
             })
-
-            (it as Button).text = "⏹️"
-            it.setOnClickListener{
-                manager.cancelConnect(channel, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        it.setOnClickListener(listener)
-                        (it as Button).text = "▶️"
-                    }
-
-                    override fun onFailure(p0: Int) {
-                        it.setOnClickListener(listener)
-                        (it as Button).text = "▶️"
-                    }
-                })
-            }
         }
         connectButton.setOnClickListener(listener)
     }
