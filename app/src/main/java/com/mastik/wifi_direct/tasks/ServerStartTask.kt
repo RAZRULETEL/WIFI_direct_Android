@@ -31,8 +31,10 @@ class ServerStartTask(
     private val communicatorsLock: ReadWriteLock = ReentrantReadWriteLock()
     private val communicators: MutableMap<String, LinkedList<Communicator>> = mutableMapOf()
 
-    var newFileListener: Function<String, FileDescriptorTransferInfo?>? = null
-    var newMessageListener: Consumer<String>? = null
+    private var newFileListener: Function<String, FileDescriptorTransferInfo?>? = null
+    private var newMessageListener: Consumer<String>? = null
+
+    private var newClientListener: Consumer<String>? = null
 
     override fun run() {
         if (isServerRunning.get())
@@ -99,23 +101,27 @@ class ServerStartTask(
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
+            communicators.clear()
             isServerRunning.set(false)
         }
     }
 
     override fun getFileSender(): Consumer<FileDescriptorTransferInfo> =
         Consumer { transferInfo ->
-            communicatorsLock.readLock().lock()
+            val fileSenders: MutableList<Consumer<FileDescriptorTransferInfo>> = mutableListOf()
+            communicatorsLock.writeLock().lock()
             try {
                 communicators.forEach {
                     if(it.value.size <= 0)
                         return@forEach
-                    it.value[0].getFileSender().accept(transferInfo)
+                    fileSenders.add(it.value[0].getFileSender())
                     it.value.addLast(it.value.removeFirst())
                 }
             } finally {
-                communicatorsLock.readLock().unlock()
+                communicatorsLock.writeLock().unlock()
             }
+            for(sender in fileSenders)
+                sender.accept(transferInfo)
         }
 
     override fun getMessageSender(): Consumer<String> =
@@ -126,7 +132,6 @@ class ServerStartTask(
                     if(it.value.size <= 0)
                         return@forEach
                     it.value[0].getMessageSender().accept(message)
-                    it.value.addLast(it.value.removeFirst())
                 }
             } finally {
                 communicatorsLock.readLock().unlock()
@@ -139,5 +144,17 @@ class ServerStartTask(
 
     override fun setOnNewMessageListener(onNewMessage: Consumer<String>) {
         newMessageListener = onNewMessage
+    }
+
+    fun getActiveConnections(): Int{
+        return communicators.values.sumOf { e -> e.size }
+    }
+
+    fun getClientsAddresses(): List<String> {
+        return communicators.keys.filter { e -> communicators[e]!!.size > 0 }
+    }
+
+    fun setOnNewClientListener(newClientListener: Consumer<String>){
+        this.newClientListener = newClientListener
     }
 }

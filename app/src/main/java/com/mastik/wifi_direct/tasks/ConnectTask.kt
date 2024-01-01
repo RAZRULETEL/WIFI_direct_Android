@@ -19,22 +19,24 @@ class ConnectTask(
         private const val CONNECT_TIMEOUT: Int = 3_000
     }
 
+    private var clientSocket: Socket? = null
+
     override fun run() {
         if(Looper.myLooper() == Looper.getMainLooper())
             throw NetworkOnMainThreadException()
 
         Thread.sleep(connectDelay)
 
-        val client = Socket()
+        clientSocket = Socket()
         var portOffset = 0
 
-        while (!client.isConnected) {
+        while (!clientSocket!!.isConnected) {
             if(portOffset >= ServerStartTask.MAX_PORT_OFFSET){
-                Timber.tag(TAG).e("Start socket listener error, port overflow")
+                Timber.tag(TAG).e("Start socket connection to $host error, port overflow")
                 return
             }
             try {
-                client.connect(
+                clientSocket!!.connect(
                     InetSocketAddress(host, defaultPort + portOffset++),
                     CONNECT_TIMEOUT
                 )
@@ -49,10 +51,18 @@ class ConnectTask(
 
 
         try {
-            readLoop(client)
-            if(!client.isConnected) client.close()
+            readLoop(clientSocket!!)
+            if(!clientSocket!!.isConnected) clientSocket!!.close()
         } catch (e: Exception){
             e.printStackTrace()
+        }
+    }
+
+    fun close(){
+        try {
+            clientSocket?.close()
+        } catch (_: Exception){
+
         }
     }
 }
