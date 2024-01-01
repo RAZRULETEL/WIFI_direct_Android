@@ -5,29 +5,33 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
 import android.graphics.Color
+import android.net.Uri
 import android.net.wifi.p2p.WifiP2pDeviceList
 import android.net.wifi.p2p.WifiP2pManager
 import android.net.wifi.p2p.WifiP2pManager.ActionListener
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
-import android.text.TextUtils
+import android.provider.OpenableColumns
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
+import com.mastik.wifi_direct.tasks.SocketConnectionManager
+import com.mastik.wifi_direct.tasks.TaskExecutors
 import com.mastik.wifi_direct.transfer.FileDescriptorTransferInfo
 import com.mastik.wifi_direct.util.Utils
+import com.mastik.wifi_direct.views.TransferProgressIndicatorView
 import com.mastik.wifi_direct.views.WifiP2pDeviceListView
 import timber.log.Timber
+import java.io.FileDescriptor
 import java.util.concurrent.Exchanger
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
@@ -197,64 +201,18 @@ class MainActivity : ComponentActivity() {
     fun getNewFileDescriptor(fileName: String): FileDescriptorTransferInfo? {
         createFileUri.launch(fileName)
         val newFile = fileExchanger.exchange(null)
-        return newFile?.let {
-            val layout = LinearLayout(this)
 
-            val nameText = TextView(this)
-            nameText.text = fileName
-            nameText.maxLines = 1
-            nameText.ellipsize = TextUtils.TruncateAt.END
-            nameText.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-
-
-            val progressBar = ProgressBar(
-                this, null,
-                android.R.attr.progressBarStyleHorizontal
-            )
-            progressBar.max = 100
-            progressBar.scaleY = 2f
-            val progressParams = LinearLayout.LayoutParams(
-                convertDpToPixel(70f, this),
-                LinearLayout.LayoutParams.MATCH_PARENT
-            )
-            progressParams.leftMargin = convertDpToPixel(5f, this)
-            progressParams.rightMargin = convertDpToPixel(5f, this)
-            progressBar.layoutParams = progressParams
-
-            val etaText = TextView(this)
-            etaText.text = "ETA: 00:00"
-            etaText.layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).also { params -> params.rightMargin = convertDpToPixel(5f, this) }
-
-            val speedText = TextView(this)
-            speedText.text = "Speed: 0 KB/s"
-
-            layout.addView(nameText)
-            layout.addView(progressBar)
-            layout.addView(etaText)
-            layout.addView(speedText)
-
-            runOnUiThread {
-                findViewById<LinearLayout>(R.id.main_layout).addView(layout, 2)
-            }
-
+        return newFile?.let{
             val transferInfo = FileDescriptorTransferInfo(it.fileDescriptor, fileName)
-            transferInfo.addProgressListener{
+            val progressView = TransferProgressIndicatorView(fileName, transferInfo, applicationContext)
+            runOnUiThread {
+                findViewById<LinearLayout>(R.id.main_layout).addView(progressView, 2)
+            }
+            transferInfo.onTransferEndListener = Consumer{
                 runOnUiThread {
-                    progressBar.progress = ((it.bytesProgress.toDouble() / it.bytesTotal) * 100).toInt()
-                    etaText.text = "ETA: ${(it.ETA / 60).toInt()}:${(it.ETA % 60).toInt()}"
-                    speedText.text = "Speed: ${(it.currentSpeed / 1024).toInt()} KB/s"
+                    findViewById<LinearLayout>(R.id.main_layout).removeView(progressView)
                 }
             }
-
-            transferInfo.onTransferEndListener = Consumer {
-                runOnUiThread {
-                    findViewById<LinearLayout>(R.id.main_layout).removeView(layout)
-                }
-            }
-
             transferInfo
         }
     }
@@ -291,6 +249,10 @@ class MainActivity : ComponentActivity() {
         )
 
         fun convertDpToPixel(dp: Float, context: Context): Int {
+            return (dp * (context.resources.displayMetrics.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT)).roundToInt()
+        }
+
+        fun convertDpToPixel(dp: Int, context: Context): Int {
             return (dp * (context.resources.displayMetrics.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT)).roundToInt()
         }
     }
