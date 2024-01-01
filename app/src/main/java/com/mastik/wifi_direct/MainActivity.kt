@@ -143,6 +143,48 @@ class MainActivity : ComponentActivity() {
                     }
                 })
         }
+
+        SocketConnectionManager.setOnNewFileListener(this::getNewFileDescriptor)
+        setFileChooserLauncher(
+            activityResultRegistry.register(
+                "open file",
+                ActivityResultContracts.GetContent()
+            ) { uri: Uri? ->
+                uri?.let {
+                    TaskExecutors.getCachedPool().execute {
+                        val parcelFileDescriptor: ParcelFileDescriptor =
+                            contentResolver.openFileDescriptor(
+                                uri,
+                                "r"
+                            )!!
+
+                        val fileDescriptor: FileDescriptor =
+                            parcelFileDescriptor.fileDescriptor
+
+                        SocketConnectionManager.getFileSender().accept(
+                            FileDescriptorTransferInfo(
+                                fileDescriptor,
+                                uri.getName(applicationContext)
+                            )
+                        )
+                    }
+                }
+            })
+
+        manager!!.requestConnectionInfo(channel
+        ) { info ->
+            Timber.tag(WiFiDirectBroadcastReceiver.TAG).d("onConnectionInfoAvailable: $info")
+            SocketConnectionManager.updateNetworkInfo(info)
+        }
+    }
+
+    fun Uri.getName(context: Context): String {
+        val returnCursor = context.contentResolver.query(this, null, null, null, null)!!
+        val nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        returnCursor.moveToFirst()
+        val fileName = returnCursor.getString(nameIndex)
+        returnCursor.close()
+        return fileName
     }
 
     fun setFileChooserLauncher(launcher: ActivityResultLauncher<String>) {
