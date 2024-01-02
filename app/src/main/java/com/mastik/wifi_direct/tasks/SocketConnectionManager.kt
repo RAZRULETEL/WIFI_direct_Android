@@ -5,10 +5,11 @@ import com.mastik.wifi_direct.MainActivity
 import com.mastik.wifi_direct.transfer.Communicator
 import com.mastik.wifi_direct.transfer.FileDescriptorTransferInfo
 import timber.log.Timber
+import java.net.SocketException
 import java.util.function.Consumer
 import java.util.function.Function
 
-object SocketConnectionManager: Communicator {
+object SocketConnectionManager : Communicator {
     val TAG: String = SocketConnectionManager::class.simpleName!!
 
     private lateinit var p2pNetworkInfo: WifiP2pInfo
@@ -23,40 +24,54 @@ object SocketConnectionManager: Communicator {
     private var onNewFile: Function<String, FileDescriptorTransferInfo?>? = null
     private var onNewMessage: Consumer<String>? = null
 
-    private val newClientListener = Consumer<String>{
+    private val newClientListener = Consumer<String> {
         connectManagers.add(MultiConnectTask(it, MainActivity.DEFAULT_P2P_SERVER_PORT))
     }
 
-    fun updateNetworkInfo(p2pNetworkInfo: WifiP2pInfo){
+    fun updateNetworkInfo(p2pNetworkInfo: WifiP2pInfo) {
         Timber.tag(TAG).d("updateNetworkInfo $p2pNetworkInfo")
         this.p2pNetworkInfo = p2pNetworkInfo
-        if(p2pNetworkInfo.groupFormed){
-            if(!ServerStartTask.isServerRunning()) {
+        if (p2pNetworkInfo.groupFormed) {
+            if (!ServerStartTask.isServerRunning()) {
                 serverTask = ServerStartTask(MainActivity.DEFAULT_P2P_SERVER_PORT)
                 TaskExecutors.getCachedPool().execute(serverTask)
             }
 
-            if(!p2pNetworkInfo.isGroupOwner)
-                connectManagers += MultiConnectTask(p2pNetworkInfo.groupOwnerAddress.hostAddress!!, MainActivity.DEFAULT_P2P_SERVER_PORT)
+            if (!p2pNetworkInfo.isGroupOwner)
+                connectManagers += MultiConnectTask(
+                    p2pNetworkInfo.groupOwnerAddress.hostAddress!!,
+                    MainActivity.DEFAULT_P2P_SERVER_PORT
+                )
 
             serverTask!!.setOnNewClientListener(newClientListener)
-            serverTask!!.setOnNewMessageListener{
+            serverTask!!.setOnNewMessageListener {
                 onNewMessage?.accept(it)
             }
-            serverTask!!.setOnNewFileListener{
+            serverTask!!.setOnNewFileListener {
                 return@setOnNewFileListener onNewFile?.apply(it)
             }
-        }else{
+        } else {
             connectManagers.forEach { e -> e.destroy() }
             connectManagers.clear()
         }
     }
 
-    override fun getFileSender(): Consumer<FileDescriptorTransferInfo> = Consumer {transferInfo ->
-        connectManagers.forEach { e -> TaskExecutors.getCachedPool().execute { e.getFileSender().accept(transferInfo) } }
+    override fun getFileSender(): Consumer<FileDescriptorTransferInfo> = Consumer { transferInfo ->
+        Timber.d("Sending file to ${connectManagers.size} clients")
+
+        connectManagers.forEach { e ->
+            TaskExecutors.getCachedPool().execute {
+                try {
+                    e.getFileSender().accept(transferInfo)
+                } catch (e: SocketException) {
+                    Timber.e(e, "Failed to send file: ")
+                }
+            }
+        }
+
     }
 
-    override fun getMessageSender(): Consumer<String>  = Consumer { message ->
+    override fun getMessageSender(): Consumer<String> = Consumer { message ->
         connectManagers.forEach { e -> e.getMessageSender().accept(message) }
     }
 
