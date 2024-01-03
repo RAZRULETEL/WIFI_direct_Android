@@ -15,9 +15,9 @@ import android.provider.OpenableColumns
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.webkit.MimeTypeMap
 import android.widget.Button
 import android.widget.ImageButton
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -28,9 +28,10 @@ import com.mastik.wifi_direct.tasks.SocketConnectionManager
 import com.mastik.wifi_direct.tasks.TaskExecutors
 import com.mastik.wifi_direct.transfer.FileDescriptorTransferInfo
 import com.mastik.wifi_direct.util.Utils
-import com.mastik.wifi_direct.views.TransferProgressIndicatorView
+import com.mastik.wifi_direct.views.IndicatorPanelView
 import com.mastik.wifi_direct.views.WifiP2pDeviceListView
 import timber.log.Timber
+import trikita.log.Log
 import java.io.FileDescriptor
 import java.util.concurrent.Exchanger
 import java.util.concurrent.TimeUnit
@@ -53,7 +54,6 @@ class MainActivity : ComponentActivity() {
     lateinit var requestPermissions: ActivityResultLauncher<Array<String>>
 
     private val fileExchanger = Exchanger<ParcelFileDescriptor>()
-    private lateinit var createFileUri: ActivityResultLauncher<String>
 
     private var discoveryState: Int = WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED
 
@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.main_layout)
 
+        Log.i("MainActivity", "onCreate")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         Timber.plant(Timber.DebugTree())
 
@@ -82,16 +83,6 @@ class MainActivity : ComponentActivity() {
                 Timber.tag(TAG).d("Permission granted: $granted")
                 permissionRequestResultExchanger.exchange(granted)
             }
-        createFileUri = registerForActivityResult(CreateDocument("todo/todo")) { uri ->
-            if (uri != null)
-                fileExchanger.exchange(
-                    contentResolver.openFileDescriptor(uri, "w"),
-                    100,
-                    TimeUnit.MILLISECONDS
-                )
-            else
-                fileExchanger.exchange(null, 100, TimeUnit.MILLISECONDS)
-        }
 
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
@@ -165,12 +156,13 @@ class MainActivity : ComponentActivity() {
                         val fileDescriptor: FileDescriptor =
                             parcelFileDescriptor.fileDescriptor
 
-                        SocketConnectionManager.getFileSender().accept(
-                            FileDescriptorTransferInfo(
-                                fileDescriptor,
-                                uri.getName(applicationContext)
-                            )
-                        )
+                        val transferInfo = FileDescriptorTransferInfo(fileDescriptor, uri.getName(applicationContext))
+
+                        findViewById<IndicatorPanelView>(R.id.transfer_indicator_panel).addOutgoingTransferIndicator(uri.getName(applicationContext), transferInfo)
+
+                        SocketConnectionManager.getFileSender().accept(transferInfo)
+
+                        parcelFileDescriptor.close() // If we lost link to parcel, then it close the descriptor
                     }
                 }
             })
@@ -198,21 +190,42 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    val desc = mutableListOf<ParcelFileDescriptor>()
+
     fun getNewFileDescriptor(fileName: String): FileDescriptorTransferInfo? {
-        createFileUri.launch(fileName)
+//        createFileUri.launch(fileName)
+        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substringAfterLast("."))
+        Timber.tag(TAG).d("Creating new file $fileName, mime: $mimeType")
+        var fileCreator: ActivityResultLauncher<String>? = null
+        fileCreator = activityResultRegistry.register(
+            "Create new file",
+            CreateDocument(mimeType?: "*/*")
+        )
+        {uri ->
+            if (uri != null)
+                fileExchanger.exchange(
+                    contentResolver.openFileDescriptor(uri, "w"),
+                    100,
+                    TimeUnit.MILLISECONDS
+                )
+            else
+                fileExchanger.exchange(null, 100, TimeUnit.MILLISECONDS)
+            fileCreator?.unregister()
+        }
+
+        fileCreator.launch(fileName)
+
         val newFile = fileExchanger.exchange(null)
 
         return newFile?.let{
             val transferInfo = FileDescriptorTransferInfo(it.fileDescriptor, fileName)
-            val progressView = TransferProgressIndicatorView(fileName, transferInfo, applicationContext)
-            runOnUiThread {
-                findViewById<LinearLayout>(R.id.main_layout).addView(progressView, 2)
+
+            findViewById<IndicatorPanelView>(R.id.transfer_indicator_panel).addIngoingTransferIndicator(fileName, transferInfo)
+
+            transferInfo.onTransferEndListener = Consumer { _ ->
+                it.close()
             }
-            transferInfo.onTransferEndListener = Consumer{
-                runOnUiThread {
-                    findViewById<LinearLayout>(R.id.main_layout).removeView(progressView)
-                }
-            }
+
             transferInfo
         }
     }
