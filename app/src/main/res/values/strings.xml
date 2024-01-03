@@ -1,5 +1,11 @@
 <resources>
     <string name="app_name">WIFI Direct</string>
+
     <string name="eta_transfer_info">ETA: %02d:%02d</string>
-    <string name="speed_transfer_info">ETA: %d %s/s</string>
+    <string name="speed_transfer_info">Speed: %d %s/s</string>
+
+    <string name="receiving_files_label">Receiving %d files:</string>
+    <string name="sending_files_label">Sending %d files:</string>
+    <string name="no_incoming_connections_label">No incoming connections</string>
+    <string name="no_outgoing_connections_label">No outgoing connections</string>
 </resources>
