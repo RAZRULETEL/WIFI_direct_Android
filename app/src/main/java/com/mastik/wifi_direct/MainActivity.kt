@@ -35,7 +35,6 @@ import trikita.log.Log
 import java.io.FileDescriptor
 import java.util.concurrent.Exchanger
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 import kotlin.math.roundToInt
 
 
@@ -222,7 +221,7 @@ class MainActivity : ComponentActivity() {
 
             findViewById<IndicatorPanelView>(R.id.transfer_indicator_panel).addIngoingTransferIndicator(fileName, transferInfo)
 
-            transferInfo.onTransferEndListener = Consumer { _ ->
+            transferInfo.addTransferEndListener { _ ->
                 it.close()
             }
 

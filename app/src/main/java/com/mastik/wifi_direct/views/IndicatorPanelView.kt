@@ -7,7 +7,6 @@ import android.widget.TextView
 import com.mastik.wifi_direct.R
 import com.mastik.wifi_direct.transfer.FileDescriptorTransferInfo
 import timber.log.Timber
-import java.util.function.Consumer
 
 class IndicatorPanelView(context: Context, attributes: AttributeSet? = null): LinearLayout(context, attributes)  {
 
@@ -51,7 +50,7 @@ class IndicatorPanelView(context: Context, attributes: AttributeSet? = null): Li
 
         post { ingoingIndicators.addView(indicator) }
 
-        fileTransferProgressInfo.onTransferEndListener = Consumer {
+        fileTransferProgressInfo.addTransferEndListener {
             post { ingoingIndicators.removeView(indicator) }
         }
     }
@@ -61,7 +60,7 @@ class IndicatorPanelView(context: Context, attributes: AttributeSet? = null): Li
 
         post { outgoingIndicators.addView(indicator) }
 
-        fileTransferProgressInfo.onTransferEndListener = Consumer {
+        fileTransferProgressInfo.addTransferEndListener {
             Timber.d("onTransferEnd $it")
             post { outgoingIndicators.removeView(indicator) }
         }
